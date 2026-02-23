@@ -1,9 +1,10 @@
+use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
 use crate::FastIndexSet;
 use crate::graphs::GraphId;
-use crate::nodes::{NodeId, Object, Predicate, Subject};
-use crate::traits::IntoTriple;
+use crate::nodes::{NodeId, NodeView, Object, Predicate, Subject};
+use crate::traits::{IntoTriple, WriteTriG};
 
 use super::Quad;
 
@@ -54,10 +55,25 @@ pub(crate) struct InternedTriple {
 
 impl InternedTriple {
     /// Create a new `InternedTriple` from a collection of interned `NodeId`s.
-    pub fn new(
+    pub(crate) fn new(
         sub_id: NodeId, pred_id: NodeId, obj_id: NodeId
     ) -> InternedTriple {
         InternedTriple { subject: sub_id, predicate: pred_id, object: obj_id }
+    }
+
+    /// Get a reference to the `subject` `NodeId`.
+    pub(crate) fn subject(&self) -> &NodeId {
+        &self.subject
+    }
+
+    /// Get a reference to the `predicate` `NodeId`.
+    pub(crate) fn predicate(&self) -> &NodeId {
+        &self.predicate
+    }
+
+    /// Get a reference to the `object` `NodeId`.
+    pub(crate) fn object(&self) -> &NodeId {
+        &self.object
     }
 }
 
@@ -79,6 +95,16 @@ impl TripleStore {
     }
 }
 
+impl<'a> IntoIterator for &'a TripleStore {
+    type Item = &'a InternedTriple;
+    type IntoIter = indexmap::set::Iter<'a, InternedTriple>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.store.iter()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct TripleId(u32);
 
@@ -94,5 +120,40 @@ impl Deref for TripleId {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+
+/// A `TripleView` is exactly as it sounds; a view to a [`Triple`]. It contains 
+/// the [`NodeView`]s for the `subject`, `predicate` and `object` components of 
+/// this triple, and can be retrieved from triples interned in a 
+/// [`DataStore`](crate::store::DataStore).
+/// 
+/// `TripleView` implements [`WriteTriG`] for writing individual triples in TriG 
+/// format. This is done without a named graph, so each triple is implicitly 
+/// added to a default graph.
+#[derive(Debug)]
+pub struct TripleView<'a> {
+    subject: NodeView<'a>,
+    predicate: NodeView<'a>,
+    object: NodeView<'a>
+}
+
+impl<'a> TripleView<'a> {
+    pub(crate) fn new(
+        subject: NodeView<'a>, predicate: NodeView<'a>, object: NodeView<'a>
+    ) -> TripleView<'a> {
+        TripleView { subject, predicate, object }
+    }
+}
+
+impl<'a> WriteTriG for TripleView<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
+        self.subject.write_trig(writer)?;
+        writer.write_all(b" ")?;
+        self.predicate.write_trig(writer)?;
+        writer.write_all(b" ")?;
+        self.object.write_trig(writer)?;
+        writer.write_all(b" .")
     }
 }

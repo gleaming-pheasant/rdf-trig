@@ -54,3 +54,8 @@ pub const RDFS: Namespace = Namespace::new_const(
 pub const SKOS: Namespace = Namespace::new_const(
     "skos", "http://www.w3.org/2004/02/skos/core#"
 );
+
+/// The XML Schema. Defines data types like dateTime and gYear.
+pub const XSD: Namespace = Namespace::new_const(
+    "xsd", "http://www.w3.org/2001/XMLSchema#"
+);

@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{Result as IoResult, Write};
 
 use crate::groups::triples::Triple;
 
@@ -6,7 +6,7 @@ use crate::groups::triples::Triple;
 /// [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) format.
 pub(crate) trait WriteTriG {
     /// Write self to the provided writer in TriG format.
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()>;
+    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()>;
 }
 
 /// A trait for converting self into a single [`Triple`]s.

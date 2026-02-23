@@ -1,26 +1,31 @@
-use std::io::{self, Write};
+use std::io::{Result as IoResult, Write};
 
 use crate::graphs::{Graph, GraphId, GraphStore, InternedGraph};
+use crate::namespaces::statics::XSD;
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
 use crate::nodes::{
     InternedIriNode,
     InternedNode,
+    IriNodeView,
     NodeId,
     NodeStore,
+    NodeView,
     Object,
-    Predicate,
     Subject
 };
 use crate::groups::quads::{InternedQuad, Quad, QuadId, QuadStore, QuadView};
-use crate::groups::triples::{InternedTriple, Triple, TripleId, TripleStore};
+use crate::groups::triples::{InternedTriple, Triple, TripleId, TripleStore, TripleView};
 use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 
-/// A [`DataStore`] should be the main entry point for applications using this 
+/// A `DataStore` should be the main entry point for applications using this 
 /// crate.
 /// 
 /// Create a `DataStore`, and use it to register `Graph`s (for quick dynamic 
 /// declaration of [`Quad`]s, without the need to clone each `Graph`'s IRI per 
 /// `Quad`) and [`Triple`]s.
+/// 
+/// By default, a `DataStore` will be initialised with the [`XSD`] `Namespace` 
+/// already initialised, to allow for the safe use of "literal" nodes.
 pub struct DataStore {
     namespaces: NamespaceStore,
     graphs: GraphStore,
@@ -32,8 +37,11 @@ pub struct DataStore {
 impl DataStore {
     /// Create a new [`DataStore`].
     pub fn new() -> DataStore {
+        let mut namespaces = NamespaceStore::new();
+        namespaces.intern_namespace(XSD);
+
         DataStore {
-            namespaces: NamespaceStore::new(),
+            namespaces,
             graphs: GraphStore::new(),
             nodes: NodeStore::new(),
             quads: QuadStore::new(),
@@ -129,9 +137,32 @@ impl DataStore {
         // )
     }
 
-    /// Retrieve all triples 
-    fn retrieve_all_triples() -> () {
-        todo!()
+    /// Retrieve all `Triple`s contained in this `DataStore` as an iterator over 
+    /// [`TripleView`]s. These are temporary views into the interned data of the 
+    /// three nodes which form a `Triple`.
+    fn all_triples(&self) -> impl Iterator<Item = TripleView> {
+        self.triples.into_iter()
+            .map(|trip| {
+                TripleView::new(
+                    self.node_id_to_view(*trip.subject()),
+                    self.node_id_to_view(*trip.predicate()),
+                    self.node_id_to_view(*trip.object())
+            )})
+    }
+
+    /// Private function which takes the provided `NodeId`, and returns a 
+    /// [`NodeView`], expanding an `InternedIriNode` with a namespace if present.
+    fn node_id_to_view(&self, node_id: NodeId) -> NodeView {
+        match self.nodes.query_node(node_id) {
+            InternedNode::Blank(blank) => NodeView::Blank(blank),
+            InternedNode::Iri(iri) => {
+                NodeView::Iri(IriNodeView::new(
+                    self.namespaces.query_namespace(iri.namespace_id()),
+                    iri.endpoint()
+                ))
+            },
+            InternedNode::Literal(literal) => NodeView::Literal(literal)
+        }
     }
     
     /// Add a [`Namespace`] to the `namespaces` [`NamespaceStore`] returning its 
@@ -175,12 +206,10 @@ impl DataStore {
             }
         };
 
-        let interned_predicate = match predicate {
-            Predicate::Iri(iri) => {
-                let (namespace, endpoint) = iri.into_parts();
-                let namespace_id = self.intern_namespace(namespace);
-                InternedNode::Iri(InternedIriNode::new(namespace_id, endpoint))
-            }
+        let interned_predicate = {
+            let (namespace, endpoint) = predicate.into_parts();
+            let namespace_id = self.intern_namespace(namespace);
+            InternedNode::Iri(InternedIriNode::new(namespace_id, endpoint))
         };
 
         let interned_object = match object {
@@ -229,7 +258,7 @@ impl DataStore {
 }
 
 impl WriteTriG for DataStore {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         self.namespaces.write_trig(writer)?;
 
         Ok(())
