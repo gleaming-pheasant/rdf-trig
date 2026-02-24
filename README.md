@@ -8,9 +8,10 @@ with more RDF formats planned.
 
 # TODO!
  - Tests, tests and more tests!
+ - Update Namespace store to return error if prefix exists for different IRI.
 
 ## Panic! Don't create too many triples!
-__Warning!__ When stored in a [`DataStore`], this crate interns every element 
+__Warning!__ When stored in a `DataStore`, this crate interns every element 
 that makes up its structure; `Graph`s, `Triple`s, `Quad`s and `nodes`.
 
 It maintains a group of hashing collections, and everything is represented with 
