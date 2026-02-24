@@ -36,6 +36,10 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
+    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS};
+    use crate::nodes::{Object, Predicate, Subject};
+    use crate::traits::WriteTriG;
+
     use super::*;
 
     #[test]
@@ -45,9 +49,30 @@ mod tests {
             value: &'static str
         }
 
-        let my_triple = MyTriple {id: 69, value: "Poopy"};
+        impl IntoTriple for MyTriple {
+            fn into_triple(self) -> Triple {
+                Triple::new(
+                    Subject::iri(ARIADNEPLUS, self.id.to_string()),
+                    Predicate::new(AOCAT, "has_property"),
+                    Object::string_en(self.value)
+                )
+            }
+        }
 
-        assert_eq!(1+1, 2);
+        let mut ds = DataStore::new();
+        ds.add_triple(MyTriple {id: 420, value: "It smells"});
+
+        let mut buf = Vec::new();
+
+        ds.write_trig(&mut buf).unwrap();
+
+        let as_string = String::from_utf8(buf).unwrap();
+
+        println!("{as_string}");
+
+        assert!(as_string.contains(
+            "ariadneplus:420 aocat:has_property \"It smells\"@en"
+        ));
     }
 
     #[test]

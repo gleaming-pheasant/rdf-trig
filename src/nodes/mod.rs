@@ -86,6 +86,14 @@ impl Predicate {
     pub fn into_parts(self) -> (Namespace, Cow<'static, str>) {
         self.iri.into_parts()
     }
+
+    /// Allows you to declare a `Predicate` using a `Namespace` and endpoint 
+    /// known at compile time.
+    /// 
+    /// Useful if you know a Predicate will be regularly used.
+    pub const fn new_const(namespace: Namespace, endpoint: &'static str) -> Predicate {
+        Predicate { iri: IriNode::new_const(namespace, endpoint) }
+    }
 }
 
 

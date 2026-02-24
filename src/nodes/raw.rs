@@ -38,6 +38,14 @@ impl IriNode {
         }
     }
 
+    /// Allows you to create a new `IriNode` which is composed of static values 
+    /// known as compile time, exported via [`Predicate`](crate::nodes::Predicate).
+    pub(crate) const fn new_const(
+        namespace: Namespace, endpoint: &'static str
+    ) -> IriNode {
+        IriNode { namespace, endpoint: Cow::Borrowed(endpoint) }
+    }
+
     /// Consume this `IriNode`, returning a tuple of its `namespace` and 
     /// `endpoint`.
     pub(crate) fn into_parts(self) -> (Namespace, Cow<'static, str>) {
@@ -151,7 +159,7 @@ impl WriteTriG for &LiteralNode {
                 match st.language() {
                     Some(lang) => {
                         write!(
-                            writer, "\"{}@{}\"",
+                            writer, "\"{}\"@{}",
                             st.value(), lang
                         )?;},
                     None => {
