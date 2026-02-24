@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::FastIndexSet;
 use crate::graphs::GraphId;
-use crate::nodes::{InternedNode, NodeId};
+use crate::nodes::{raw::InternedNode, NodeId};
 
 use super::Triple;
 

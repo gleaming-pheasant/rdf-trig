@@ -4,8 +4,8 @@ use crate::graphs::{Graph, GraphId, GraphStore, InternedGraph};
 use crate::namespaces::statics::XSD;
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
 use crate::nodes::{
-    InternedIriNode,
-    InternedNode,
+    raw::InternedIriNode,
+    raw::InternedNode,
     IriNodeView,
     NodeId,
     NodeStore,
