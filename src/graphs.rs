@@ -177,6 +177,16 @@ impl<'a> GraphView<'a> {
     ) -> GraphView<'a> {
         GraphView { namespace, endpoint }
     }
+
+    /// Get a reference to the [`Namespace`] for this `GraphView`.
+    pub fn namespace(&self) -> &Namespace {
+        &self.namespace
+    }
+
+    /// Get a reference to the `endpoint` [str] for this `GraphView`.
+    pub fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
 }
 
 /// A `FullGraphView`, like other `...View` objects, is a collection of 
@@ -220,9 +230,9 @@ impl<'a> FullGraphView<'a> {
 
 impl<'a> WriteTriG for FullGraphView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        writer.write_all(self.graph.namespace.prefix().as_bytes())?;
+        writer.write_all(self.graph.namespace().prefix().as_bytes())?;
         writer.write_all(b":")?;
-        writer.write_all(self.graph.endpoint.as_bytes())?;
+        writer.write_all(self.graph.endpoint().as_bytes())?;
         writer.write_all(b" { ")?;
 
         for triple in &self.triples {

@@ -8,8 +8,8 @@ use crate::graphs::{
     GraphView,
     InternedGraph
 };
-use crate::namespaces::statics::XSD;
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
+use crate::namespaces::statics::XSD;
 use crate::nodes::{
     raw::InternedIriNode,
     raw::InternedNode,

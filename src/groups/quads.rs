@@ -1,12 +1,11 @@
 use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
-use crate::traits::WriteTriG;
-use crate::{FastIndexSet, Graph};
+use crate::FastIndexSet;
 use crate::graphs::{GraphId, GraphView};
-use crate::nodes::{NodeId, NodeView};
-
-use super::Triple;
+use crate::groups::triples::{Triple, TripleView};
+use crate::nodes::NodeId;
+use crate::traits::WriteTriG;
 
 /// A [`Quad`] is a [`Triple`] with an optional [`GraphId`] to assign it to a 
 /// [`Graph`] that has been registered with a 
@@ -138,13 +137,16 @@ impl<'a> IntoIterator for &'a QuadStore {
 #[derive(Debug)]
 pub(crate) struct QuadView<'a> {
     graph: GraphView<'a>,
-    subject: NodeView<'a>,
-    predicate: NodeView<'a>,
-    object: NodeView<'a>
+    triple: TripleView<'a>
 }
 
 impl<'a> WriteTriG for QuadView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        
+        writer.write_all(self.graph.namespace().prefix().as_bytes())?;
+        writer.write_all(b":")?;
+        writer.write_all(self.graph.endpoint().as_bytes())?;
+        writer.write_all(b" { ")?;
+        self.triple.write_trig(writer)?;
+        writer.write_all(b" }")
     }
 }
