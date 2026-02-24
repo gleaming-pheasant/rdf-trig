@@ -5,7 +5,6 @@ use crate::traits::WriteTriG;
 use crate::{FastIndexSet, Graph};
 use crate::graphs::GraphId;
 use crate::nodes::{NodeId, NodeView};
-use crate::nodes::raw::InternedNode;
 
 use super::Triple;
 
@@ -116,6 +115,16 @@ impl QuadStore {
     }
 }
 
+impl<'a> IntoIterator for &'a QuadStore {
+    type Item = &'a InternedQuad;
+    type IntoIter = indexmap::set::Iter<'a, InternedQuad>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.store.iter()
+    }
+}
+
 /// A `QuadView`, like other `...View` objects in this crate, is a view on 
 /// interned data. This struct provides views into a [`Graph`] and its 
 /// associated `subject`, `predicate` and `object`, via [`NodeView`]s.
@@ -125,7 +134,7 @@ impl QuadStore {
 /// 
 /// Accessing a collection of [`TripleView`](crate::groups::triples::TripleView)s 
 /// per one [`Graph`] is more efficient for outputting to the TriG format, with 
-/// its implementation of [`WriteTriG`].
+/// its implementation of [`WriteTriG`], which can be
 #[derive(Debug)]
 pub(crate) struct QuadView<'a> {
     graph: &'a Graph,

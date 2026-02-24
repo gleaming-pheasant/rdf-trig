@@ -124,22 +124,44 @@ impl DataStore {
         ));
     }
 
-    /// Retrieve a [`GraphView`] view of a [`Graph`] for the provided 
-    /// [`GraphId`].
-    pub fn get_graph_view<'a>(&self, graph_id: GraphId) -> GraphView<'a> {
-        todo!()
+    /// Retrieve a [`FullGraphView`] of a [`Graph`] for the provided [`GraphId`].
+    pub fn get_full_graph_view(&self, graph_id: GraphId) -> FullGraphView<'_> {
+        let mut fgv = FullGraphView::new(self.get_graph_view(graph_id));
+
+        let _ = self.quads.into_iter()
+            .map(|quad| {
+                fgv.add_triple_view(
+                    TripleView::new(
+                        self.node_id_to_view(*&quad.subject_id()),
+                        self.node_id_to_view(*&quad.predicate_id()),
+                        self.node_id_to_view(*&quad.object_id())
+                    )
+                );
+            });
+
+            fgv
+    }
+
+    /// Retrieve a [`GraphView`] of a [`Graph`] for the provided [`GraphId`].
+    pub fn get_graph_view(&self, graph_id: GraphId) -> GraphView<'_> {
+        GraphView::new(
+            self.query_namespace(self.graphs.query_namespace(graph_id)),
+            self.graphs.query_endpoint(graph_id)
+        )
     }
 
     /// Retrieve an iterator over [`FullGraphView`]s for every [`Graph`] 
     /// contained in this `DataStore`.
-    pub fn get_all_graph_views<'a>(&self) {
-        todo!()
+    pub fn get_all_full_graph_views<'a>(&self)
+    -> impl Iterator<Item = FullGraphView<'_>> {
+        (0..self.graphs.len()).map(|ix| {
+            self.get_full_graph_view(GraphId::from(ix))
+        })
     }
 
     /// Retrieve all `Triple`s contained in this `DataStore` as an iterator over 
-    /// [`TripleView`]s. These are temporary views into the interned data of the 
-    /// three nodes which form a `Triple`.
-    fn all_triples(&self) -> impl Iterator<Item = TripleView> {
+    /// [`TripleView`]s.
+    pub fn all_triples(&self) -> impl Iterator<Item = TripleView<'_>> {
         self.triples.into_iter()
             .map(|trip| {
                 TripleView::new(
@@ -242,7 +264,18 @@ impl DataStore {
 impl WriteTriG for DataStore {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         self.namespaces.write_trig(writer)?;
+        writer.write_all(b"\n")?;
 
+        for trip in self.all_triples() {
+            trip.write_trig(writer)?;
+            writer.write_all(b"\n")?;
+        }
+
+        for graph in self.get_all_full_graph_views() {
+            graph.write_trig(writer)?;
+            writer.write_all(b"\n")?;
+        }
+        
         Ok(())
     }
 }

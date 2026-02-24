@@ -120,11 +120,11 @@ impl NamespaceStore {
 impl WriteTriG for NamespaceStore {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         for ns in &self.store {
-            writer.write_all(b"@prefix ");
-            writer.write_all(ns.prefix().as_bytes());
-            writer.write_all(b": <");
-            writer.write_all(ns.iri().as_bytes());
-            writer.write_all(b"> .\n");
+            writer.write_all(b"@prefix ")?;
+            writer.write_all(ns.prefix().as_bytes())?;
+            writer.write_all(b": <")?;
+            writer.write_all(ns.iri().as_bytes())?;
+            writer.write_all(b"> .\n")?;
         }
 
         Ok(())

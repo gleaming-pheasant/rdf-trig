@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
+use indexmap::IndexSet;
+
 use crate::FastIndexSet;
 use crate::groups::triples::TripleView;
 use crate::namespaces::{Namespace, NamespaceId};
@@ -40,6 +42,24 @@ impl GraphStore {
             .get_index(*graph_id as usize)
             .unwrap()
             .endpoint()
+    }
+}
+
+impl Deref for GraphStore {
+    type Target = FastIndexSet<InternedGraph>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.store
+    }
+}
+
+impl<'a> IntoIterator for &'a GraphStore {
+    type Item = &'a InternedGraph;
+    type IntoIter = indexmap::set::Iter<'a, InternedGraph>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.store.iter()
     }
 }
 
