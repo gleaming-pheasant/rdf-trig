@@ -1,8 +1,11 @@
+use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
-use crate::FastIndexSet;
+use crate::traits::WriteTriG;
+use crate::{FastIndexSet, Graph};
 use crate::graphs::GraphId;
-use crate::nodes::{raw::InternedNode, NodeId};
+use crate::nodes::{NodeId, NodeView};
+use crate::nodes::raw::InternedNode;
 
 use super::Triple;
 
@@ -113,25 +116,26 @@ impl QuadStore {
     }
 }
 
-/// A [`QuadView`] is a view on the built elements of a [`Quad`], via an 
-/// [`InternedQuad`]. It provides references to 
+/// A `QuadView`, like other `...View` objects in this crate, is a view on 
+/// interned data. This struct provides views into a [`Graph`] and its 
+/// associated `subject`, `predicate` and `object`, via [`NodeView`]s.
+/// 
+/// A `QuadView` cannot be constructed directly. It must be retrieved from a 
+/// [`DataStore`](crate::store::DataStore).
+/// 
+/// Accessing a collection of [`TripleView`](crate::groups::triples::TripleView)s 
+/// per one [`Graph`] is more efficient for outputting to the TriG format, with 
+/// its implementation of [`WriteTriG`].
 #[derive(Debug)]
 pub(crate) struct QuadView<'a> {
-    graph_namespace_prefix: &'a str,
-    graph_endpoint: &'a str,
-    subject: &'a InternedNode,
-    predicate: &'a InternedNode,
-    object: &'a InternedNode
+    graph: &'a Graph,
+    subject: NodeView<'a>,
+    predicate: NodeView<'a>,
+    object: NodeView<'a>
 }
 
-impl<'a> QuadView<'a> {
-    pub(crate) fn new(
-        graph_namespace_prefix: &'a str, graph_endpoint: &'a str,
-        subject: &'a InternedNode, predicate: &'a InternedNode, 
-        object: &'a InternedNode
-    ) -> QuadView<'a> {
-        QuadView {
-            graph_namespace_prefix, graph_endpoint, subject, predicate, object
-        }
+impl<'a> WriteTriG for QuadView<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
+        todo!()
     }
 }

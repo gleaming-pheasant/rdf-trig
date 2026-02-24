@@ -1,6 +1,13 @@
 use std::io::{Result as IoResult, Write};
 
-use crate::graphs::{Graph, GraphId, GraphStore, InternedGraph};
+use crate::graphs::{
+    FullGraphView,
+    Graph,
+    GraphId,
+    GraphStore,
+    GraphView,
+    InternedGraph
+};
 use crate::namespaces::statics::XSD;
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
 use crate::nodes::{
@@ -13,8 +20,14 @@ use crate::nodes::{
     Object,
     Subject
 };
-use crate::groups::quads::{InternedQuad, Quad, QuadId, QuadStore, QuadView};
-use crate::groups::triples::{InternedTriple, Triple, TripleId, TripleStore, TripleView};
+use crate::groups::quads::{InternedQuad, Quad, QuadId, QuadStore};
+use crate::groups::triples::{
+    InternedTriple,
+    Triple,
+    TripleId,
+    TripleStore,
+    TripleView
+};
 use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 
 /// A `DataStore` should be the main entry point for applications using this 
@@ -111,30 +124,16 @@ impl DataStore {
         ));
     }
 
-    /// Get a full list of `Quad`s for the given `GraphId`.
-    /// 
-    /// A `Quad` is automatically declared whenever you call 
-    /// [Self::add_quad], [Self::add_triple_to_graph] or 
-    /// [Self::add_triples_to_graph].
-    pub fn query_quads_by_graph(&self, graph_id: GraphId) -> Vec<QuadView> {
-        let graph_nodes = self.quads.query_nodes_by_graph(graph_id);
-        let mut quad_views: Vec<QuadView> = Vec::with_capacity(graph_nodes.len());
-
-        for (sub_id, pred_id, obj_id) in graph_nodes {
-            if let InternedNode::Iri(iri) = self.query_node(sub_id) {
-                let sub_namespace = self.query_namespace(iri.namespace_id());
-            }
-        }
-
+    /// Retrieve a [`GraphView`] view of a [`Graph`] for the provided 
+    /// [`GraphId`].
+    pub fn get_graph_view<'a>(&self, graph_id: GraphId) -> GraphView<'a> {
         todo!()
+    }
 
-        // QuadView::new(
-        //     self.query_graph_namespace_prefix(graph_id),
-        //     self.query_graph_endpoint(graph_id),
-        //     subject,
-        //     predicate,
-        //     object
-        // )
+    /// Retrieve an iterator over [`FullGraphView`]s for every [`Graph`] 
+    /// contained in this `DataStore`.
+    pub fn get_all_graph_views<'a>(&self) {
+        todo!()
     }
 
     /// Retrieve all `Triple`s contained in this `DataStore` as an iterator over 
@@ -232,23 +231,6 @@ impl DataStore {
     /// Retrieve a reference to a `Namespace` from the provided `NamespaceId`.
     fn query_namespace(&self, ns_id: NamespaceId) -> &Namespace {
         self.namespaces.query_namespace(ns_id)
-    }
-
-    /// Retrieve the `endpoint` for a `Graph` from the provided `GraphId`.
-    fn query_graph_endpoint(&self, graph_id: GraphId) -> &str {
-        self.graphs.query_endpoint(graph_id)
-    }
-
-    /// Retrieve a `Graph`s `Namespace` from the provided `GraphId`.
-    fn query_graph_namespace(&self, graph_id: GraphId) -> NamespaceId {
-        self.graphs.query_namespace(graph_id)
-    }
-
-    /// Retrieve a `Graph`s `Namespace`'s `prefix` from the provided `GraphId`.
-    fn query_graph_namespace_prefix(&self, graph_id: GraphId) -> &str {
-        self.namespaces.query_namespace(
-            self.query_graph_namespace(graph_id)
-        ).prefix()
     }
 
     /// Retrieve an `InternedNode` from a provided `NodeId`.
