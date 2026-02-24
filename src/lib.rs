@@ -36,6 +36,20 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn test_into_triple() {
+        struct MyTriple {
+            id: usize,
+            value: &'static str
+        }
+
+        let my_triple = MyTriple {id: 69, value: "Poopy"};
+
+        assert_eq!(1+1, 2);
+    }
+
     #[test]
     fn quick_mafs() {
         let two_plus_two = 2 + 2;

@@ -17,7 +17,9 @@ pub struct Triple {
 
 impl Triple {
     /// Create a new [`Triple`] from parts.
-    pub fn new(subject: Subject, object: Object, predicate: Predicate) -> Triple {
+    pub fn new(
+        subject: Subject, predicate: Predicate, object: Object
+    ) -> Triple {
         Triple { subject, predicate, object }
     }
 
