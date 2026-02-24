@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use crate::traits::WriteTriG;
 use crate::{FastIndexSet, Graph};
-use crate::graphs::GraphId;
+use crate::graphs::{GraphId, GraphView};
 use crate::nodes::{NodeId, NodeView};
 
 use super::Triple;
@@ -137,7 +137,7 @@ impl<'a> IntoIterator for &'a QuadStore {
 /// its implementation of [`WriteTriG`], which can be
 #[derive(Debug)]
 pub(crate) struct QuadView<'a> {
-    graph: &'a Graph,
+    graph: GraphView<'a>,
     subject: NodeView<'a>,
     predicate: NodeView<'a>,
     object: NodeView<'a>
@@ -145,6 +145,6 @@ pub(crate) struct QuadView<'a> {
 
 impl<'a> WriteTriG for QuadView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        todo!()
+        
     }
 }

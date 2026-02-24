@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
-use indexmap::IndexSet;
-
 use crate::FastIndexSet;
 use crate::groups::triples::TripleView;
 use crate::namespaces::{Namespace, NamespaceId};

@@ -7,8 +7,6 @@ and individual elements to [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)),
 with more RDF formats planned.
 
 # TODO!
- - Implement TriGWrite trait,
- - Add all xsd literal types as Object nodes,
  - Tests, tests and more tests!
 
 ## Panic! Don't create too many triples!
