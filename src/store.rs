@@ -75,7 +75,7 @@ impl DataStore {
     /// Add a `Triple` (or implementor of [`IntoTriple`]) to this `DataStore`.
     pub fn add_triple<T: IntoTriple>(&mut self, triple: T) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple.into_triple());
-        self.triples.intern_triple(InternedTriple::new(sub_id, pred_id, obj_id));
+        self.intern_triple(InternedTriple::new(sub_id, pred_id, obj_id));
     }
 
     /// Add all of the `Triple`s from an impl [`IntoTriples`] iterator to this 
@@ -95,7 +95,7 @@ impl DataStore {
             triple.into_triple()
         );
 
-        self.quads.intern_quad(InternedQuad::new(
+        self.intern_quad(InternedQuad::new(
             graph_id, sub_id, pred_id, obj_id
         ));
     }
@@ -107,7 +107,7 @@ impl DataStore {
     ) {
         for triple in triples.into_triples() {
             let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple);
-            self.quads.intern_quad(InternedQuad::new(
+            self.intern_quad(InternedQuad::new(
                 graph_id, sub_id, pred_id, obj_id
             ));
         }
@@ -119,7 +119,7 @@ impl DataStore {
         let (graph_id, triple) = quad.into_parts();
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple);
 
-        self.quads.intern_quad(InternedQuad::new(
+        self.intern_quad(InternedQuad::new(
             graph_id, sub_id, pred_id, obj_id
         ));
     }
@@ -145,7 +145,7 @@ impl DataStore {
     /// Retrieve a [`GraphView`] of a [`Graph`] for the provided [`GraphId`].
     pub fn get_graph_view(&self, graph_id: GraphId) -> GraphView<'_> {
         GraphView::new(
-            self.query_namespace(self.graphs.query_namespace(graph_id)),
+            self.namespaces.query_namespace(self.graphs.query_namespace(graph_id)),
             self.graphs.query_endpoint(graph_id)
         )
     }
@@ -173,7 +173,8 @@ impl DataStore {
 
     /// Private function which takes the provided `NodeId`, and returns a 
     /// [`NodeView`], expanding an `InternedIriNode` with a namespace if present.
-    fn node_id_to_view(&self, node_id: NodeId) -> NodeView {
+    #[inline]
+    fn node_id_to_view(&self, node_id: NodeId) -> NodeView<'_> {
         match self.nodes.query_node(node_id) {
             InternedNode::Blank(blank) => NodeView::Blank(blank),
             InternedNode::Iri(iri) => {
@@ -188,24 +189,28 @@ impl DataStore {
     
     /// Add a [`Namespace`] to the `namespaces` [`NamespaceStore`] returning its 
     /// [`NamespaceId`] (index in the store, cast as u32).
+    #[inline]
     fn intern_namespace(&mut self, namespace: Namespace) -> NamespaceId {
         self.namespaces.intern_namespace(namespace)
     }
 
     /// Add an [`InternedNode`] to the `nodes` [`NodeStore`] returning its 
     /// [`NodeId`] (index in the store, cast as u32).
+    #[inline]
     fn intern_node(&mut self, node: InternedNode) -> NodeId {
         self.nodes.intern_node(node)
     }
 
     /// Add an [`InternedQuad`] to the `quads` [`QuadStore`] returning its 
     /// [`QuadId`] (index in the store, cast as u32).
+    #[inline]
     fn intern_quad(&mut self, quad: InternedQuad) -> QuadId {
         self.quads.intern_quad(quad)
     }
 
     /// Add an [`InternedTriple`] to the `triples` [`TripleStore`] returning its 
     /// [`TripleId`] (index in the store, cast as u32).
+    #[inline]
     fn intern_triple(&mut self, triple: InternedTriple) -> TripleId {
         self.triples.intern_triple(triple)
     }
@@ -248,16 +253,6 @@ impl DataStore {
             self.intern_node(interned_predicate),
             self.intern_node(interned_object)
         )
-    }
-
-    /// Retrieve a reference to a `Namespace` from the provided `NamespaceId`.
-    fn query_namespace(&self, ns_id: NamespaceId) -> &Namespace {
-        self.namespaces.query_namespace(ns_id)
-    }
-
-    /// Retrieve an `InternedNode` from a provided `NodeId`.
-    fn query_node(&self, node_id: NodeId) -> &InternedNode {
-        self.nodes.query_node(node_id)
     }
 }
 
