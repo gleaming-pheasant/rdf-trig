@@ -36,7 +36,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
-    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, OWL};
+    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS};
     use crate::nodes::{Object, Predicate, Subject};
     use crate::traits::WriteTriG;
 
@@ -74,8 +74,6 @@ mod tests {
 
         let as_string = String::from_utf8(buf).unwrap();
 
-        println!("{as_string}");
-
         assert!(as_string.contains(
             "ariadneplus:420 aocat:has_property \"It smells\"@en"
         ));
@@ -97,17 +95,9 @@ mod tests {
 
         let as_str = String::from_utf8(buf).unwrap();
 
-        println!("{as_str}");
-
-        assert!(as_str.contains("NO IT DOESN'T"));
-    }
-
-    #[test]
-    fn quick_mafs() {
-        let two_plus_two = 2 + 2;
-        assert_eq!(two_plus_two, 4);
-
-        let minus_one = two_plus_two - 1;
-        assert_eq!(minus_one, 3);
+        assert!(as_str.contains("@prefix ariadneplus: <"));
+        assert!(as_str.contains("ariadneplus:MyGraph {"));
+        assert!(as_str.contains("ariadneplus:69 aocat:has_property"));
+        assert!(as_str.contains("\"Is inappropriate\"@en"));
     }
 }

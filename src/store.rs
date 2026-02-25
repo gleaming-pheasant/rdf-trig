@@ -128,8 +128,7 @@ impl DataStore {
     pub fn get_full_graph_view(&self, graph_id: GraphId) -> FullGraphView<'_> {
         let mut fgv = FullGraphView::new(self.get_graph_view(graph_id));
 
-        let _ = self.quads.into_iter()
-            .map(|quad| {
+        for quad in self.quads.into_iter() {
                 fgv.add_triple_view(
                     TripleView::new(
                         self.node_id_to_view(*&quad.subject_id()),
@@ -137,7 +136,7 @@ impl DataStore {
                         self.node_id_to_view(*&quad.object_id())
                     )
                 );
-            });
+            }
 
             fgv
     }
