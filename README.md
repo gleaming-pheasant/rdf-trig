@@ -9,6 +9,7 @@ with more RDF formats planned.
 # TODO!
  - Tests, tests and more tests!
  - Update Namespace store to return error if prefix exists for different IRI.
+ - Add escape encodings to IRIs and literals.
 
 ## Panic! Don't create too many triples!
 __Warning!__ When stored in a `DataStore`, this crate interns every element 

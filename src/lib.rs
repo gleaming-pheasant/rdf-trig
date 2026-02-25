@@ -36,29 +36,35 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
-    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS};
+    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, OWL};
     use crate::nodes::{Object, Predicate, Subject};
     use crate::traits::WriteTriG;
 
     use super::*;
 
+    struct MyTriple {
+        id: usize,
+        value: &'static str
+    }
+
+    impl MyTriple {
+        fn new(id: usize, value: &'static str) -> MyTriple {
+            MyTriple { id, value }
+        }
+    }
+
+    impl IntoTriple for MyTriple {
+        fn into_triple(self) -> Triple {
+            Triple::new(
+                Subject::iri(ARIADNEPLUS, self.id.to_string()),
+                Predicate::new(AOCAT, "has_property"),
+                Object::string_en(self.value)
+            )
+        }
+    }
+
     #[test]
     fn test_into_triple() {
-        struct MyTriple {
-            id: usize,
-            value: &'static str
-        }
-
-        impl IntoTriple for MyTriple {
-            fn into_triple(self) -> Triple {
-                Triple::new(
-                    Subject::iri(ARIADNEPLUS, self.id.to_string()),
-                    Predicate::new(AOCAT, "has_property"),
-                    Object::string_en(self.value)
-                )
-            }
-        }
-
         let mut ds = DataStore::new();
         ds.add_triple(MyTriple {id: 420, value: "It smells"});
 
@@ -73,6 +79,27 @@ mod tests {
         assert!(as_string.contains(
             "ariadneplus:420 aocat:has_property \"It smells\"@en"
         ));
+    }
+
+    #[test]
+    fn test_add_triple_to_quad() {
+        let mut ds = DataStore::new();
+        // Can be updated to be a wrapper around an IriNode! 🤦‍♂️
+        let my_graph = Graph::new(ARIADNEPLUS, "MyGraph");
+        let graph_id = ds.add_graph(my_graph);
+
+        let triple = MyTriple::new(69, "Is inappropriate");
+
+        ds.add_triple_to_graph(graph_id, triple);
+
+        let mut buf: Vec<u8> = Vec::new();
+        ds.write_trig(&mut buf).unwrap();
+
+        let as_str = String::from_utf8(buf).unwrap();
+
+        println!("{as_str}");
+
+        assert!(as_str.contains("NO IT DOESN'T"));
     }
 
     #[test]
