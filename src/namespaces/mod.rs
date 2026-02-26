@@ -291,7 +291,11 @@ mod tests {
 
         assert_eq!(store.query_namespace(ns_two).prefix(), "one");
 
-        assert!(matches!(store.query_namespace(ns_one).prefix, Cow::Borrowed(_)));
-        assert!(matches!(store.query_namespace(ns_two).prefix, Cow::Borrowed(_)));
+        assert!(
+            matches!(store.query_namespace(ns_one).prefix, Cow::Borrowed(_))
+        );
+        assert!(
+            matches!(store.query_namespace(ns_two).prefix, Cow::Borrowed(_))
+        );
     }
 }
