@@ -49,14 +49,15 @@ This is to improve performance and decrease memory consumption when using RDF
 "nodes" which are known at compile time; static str references can be used.
 
 Despite the propaganda, RDF isn't actually "machine understandable", so 
-hardcoding namespaces and iris is very common practice (see the de-facto standard 
-[RDF4J](https://rdf4j.org/documentation/tutorials/getting-started/)). So this 
-crate even provides many `const` namespaces out of the box to assist with this 
-(aocat, dcterms, foaf, owl, rdf, rdfs, skos, etc.). If you use any of these, it 
-makes sense to stick with the `Cow`s.
+hardcoding namespaces and iris is very common practice (see the de-facto 
+standard [RDF4J](https://rdf4j.org/documentation/tutorials/getting-started/)). 
+So this crate even provides many `const` namespaces out of the box to assist 
+with this (aocat, dcterms, foaf, owl, rdf, rdfs, skos, etc.). If you use any of 
+these, it makes sense to stick with the `Cow`s.
 
 If, however, you are dynamically defining all - or most - nodes and their 
-namespaces, do not use this crate; the overhead of using `Cow` would be wasteful.
+namespaces, do not use this crate; the overhead of using `Cow` would be 
+wasteful.
 
 ## Not Suitable for Broadcast
 To assist in speed, this crate implements the 
