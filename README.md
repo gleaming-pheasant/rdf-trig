@@ -10,6 +10,8 @@ with more RDF formats planned.
  - Tests, tests and more tests!
  - Add escape encodings to IRIs and literals,
     - IRIs: percent encode rather than numeric (unicode \u#### encode),
+        - This includes rejecting an IRIs upfront that include invalid 
+        non-escaped characters, such as spaces.
     - Prefixes and blank nodes (local names): Backslash escape the characters:
         - `~.-!$&'()*+,;=/?#@%_`,
     - Literals, string escape the basics:
@@ -22,6 +24,7 @@ with more RDF formats planned.
         - `\'` ('),
         - `\\` (\\)
  - Add validation to existing literal types.
+    - Include validating IRIs to not contain any unescaped invalid characters.
 
 ## Panic! Don't create too many triples!
 __Warning!__ When stored in a `DataStore`, this crate interns every element 

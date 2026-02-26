@@ -16,6 +16,12 @@ pub mod statics;
 /// iris. Using W3C's example, both `http://a.example/foo-bar` and 
 /// `http://a.example/%66oo-bar` are accepted, but they are not equivalent.
 /// 
+/// Similarly invalid, unescaped, characters within a URL (e.g., a space not in 
+/// the format `%20`) will not be accepted and will return an error on 
+/// attempting to create a new `Namespace` (as will `Iri` node endpoints). This 
+/// is to ensure users of this crate take charge of what is encoded and what is 
+/// not.
+/// 
 /// When `Namespace`s are stored, they are interned to prevent excessive 
 /// duplication of long strings. This crate only implements prefixes for output, 
 /// so any endpoints added to an interned `Namespace` are simply appended to the 
