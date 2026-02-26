@@ -8,7 +8,6 @@ with more RDF formats planned.
 
 # TODO!
  - Tests, tests and more tests!
- - Update Namespace store to return error if prefix exists for different IRI.
  - Add escape encodings to IRIs and literals.
  - Add validation to existing literal types.
 
