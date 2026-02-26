@@ -188,13 +188,13 @@ impl NamespaceStore {
 
     /// Attempt to append 
     /// 
-    /// __Panics!__ If the number of matching `prefix`es is greater than 65,535. 
-    /// Something has gone seriously wrong if you've got 65,535 matching 
+    /// __Panics!__ If the number of matching `prefix`es is greater than 255. 
+    /// Something has gone seriously wrong if you've got 255 matching 
     /// namespace prefixes!
     pub(crate) fn find_new_prefix(
         &self, mut ns: Namespace
     ) -> Namespace {
-        let mut suffix: u16 = 0;
+        let mut suffix: u8 = 0;
 
         let prefix_base: String = ns.prefix().to_string();
 

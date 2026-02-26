@@ -13,12 +13,18 @@ with more RDF formats planned.
 
 ## Panic! Don't create too many triples!
 __Warning!__ When stored in a `DataStore`, this crate interns every element 
-that makes up its structure; `Graph`s, `Triple`s, `Quad`s and `nodes`.
+that makes up its structure; `Namespace`s, `Graph`s, `Triple`s, `Quad`s and 
+all of their `nodes`.
 
 It maintains a group of hashing collections, and everything is represented with 
 an index to prevent duplication. This index is converted to a `u32` to be more 
 cache friendly on 64-bit systems, but be warned, any collection which reaches 
 over the maximum `u32` size (4,294,967,295) will cause applications to panic.
+
+The crate also appends numbers to you Namespace prefixes if you've used the same 
+`prefix` for two different `iri`s. The limit for "suffixed prefixes" is the 
+`u8` maximum (255). If you've messed up, and you're declaring each endpoint as 
+its own namespace with a shared prefix, this crate will panic!
 
 ### So many Ids...
 On that note... this crate may seem overkill initially. Interning every element 
