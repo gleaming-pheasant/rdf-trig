@@ -121,6 +121,24 @@ pub enum LiteralNode {
 }
 
 impl LiteralNode {
+    pub(crate) fn new_datetime() {
+        todo!()
+    }
+
+    pub(crate) fn new_datetime_unchecked() {
+        todo!()
+    }
+
+    pub(crate) fn new_gyear() {
+        todo!()
+    }
+    
+    pub(crate) fn new_gyear_unchecked() {
+        todo!()
+    }
+
+    /// Create a new `LiteralNode::String` with the provided `language` and 
+    /// string `value`.
     pub(crate) fn string<L, V>(language: Option<L>, value: V) -> LiteralNode 
     where
         L: Into<Cow<'static, str>>,
@@ -129,12 +147,16 @@ impl LiteralNode {
         LiteralNode::String(StringLiteral::new(language, value))
     }
 
+    /// Create a new `LiteralNode::String` with the `language` code already set 
+    /// to "en" for English.
     pub(crate) fn string_en<V: Into<Cow<'static, str>>>(
         value: V
     ) -> LiteralNode {
         LiteralNode::String(StringLiteral::new_en(value))
     }
 
+    /// Create a new `LiteralNode::String` with the `language` code set to 
+    /// `None`.
     pub(crate) fn string_no_lang<V: Into<Cow<'static, str>>>(
         value: V
     ) -> LiteralNode {

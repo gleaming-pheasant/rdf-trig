@@ -8,7 +8,19 @@ with more RDF formats planned.
 
 # TODO!
  - Tests, tests and more tests!
- - Add escape encodings to IRIs and literals.
+ - Add escape encodings to IRIs and literals,
+    - IRIs: percent encode rather than numeric (unicode \u#### encode),
+    - Prefixes and blank nodes (local names): Backslash escape the characters:
+        - `~.-!$&'()*+,;=/?#@%_`,
+    - Literals, string escape the basics:
+        - `\t` (tab),
+        - `\b` (backspace),
+        - `\n` (newline),
+        - `\r` (carriage return),
+        - `\f` (form feed),
+        - `\"` ("),
+        - `\'` ('),
+        - `\\` (\\)
  - Add validation to existing literal types.
 
 ## Panic! Don't create too many triples!
