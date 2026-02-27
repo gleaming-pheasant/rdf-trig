@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::io::{Result as IoResult, Write};
 
+use crate::errors::RdfLiteError;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
 
@@ -110,32 +111,96 @@ impl WriteTriG for BlankNode {
 /// Because there is nothing to explicitly intern in a `LiteralNode`, this type 
 /// directly implements the [`WriteTriG`] trait for TriG formatting.
 /// 
-/// This enum is __non_exhaustive__, with additional types not currently on the 
-/// roadmap.
+/// This enum is __non_exhaustive__, with additional types not currently 
+/// planned.
 #[derive(Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum LiteralNode {
+    Boolean(Cow<'static, str>),
     Datetime(Cow<'static, str>),
+    Decimal(Cow<'static, str>),
     GYear(Cow<'static, str>),
     String(StringLiteral)
 }
 
 impl LiteralNode {
-    pub(crate) fn new_datetime() {
-        todo!()
+    /// Declare a `LiteralNode::Boolean` from the provided value.
+    /// 
+    /// Returns an `RdfLiteError::InvalidBoolean` if the provided value cannot 
+    /// be parsed as an XSD boolean ("true", "false", "1", "0").
+    /// 
+    /// The input value, is retained for output (if "0" is written, "0" will be 
+    /// returned).
+    pub(crate) fn new_boolean<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfLiteError> {
+        let valid_options = ["true", "false", "1", "0"];
+
+        let cow_val: Cow<'static, str> = value.into();
+
+        for opt in valid_options {
+            if &cow_val == opt {
+                return Ok(LiteralNode::Boolean(cow_val))
+            }
+        }
+
+        Err(RdfLiteError::InvalidBoolean(cow_val))
     }
 
-    pub(crate) fn new_datetime_unchecked() {
-        todo!()
+    /// Declare a `LiteralNode::Datetime` from the provided value.
+    /// 
+    /// Returns an `RdfLiteError::InvalidDateTime` if the provided value cannot 
+    /// be parsed as an XSD dateTime ("1900-01-01T00:00:00.000", with or without 
+    /// "Z" or a timezone offset).
+    pub(crate) fn new_datetime<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfLiteError> {
+        let valid_formats = ["%+", "%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"];
+
+        let cow_val: Cow<'static, str> = value.into();
+
+        for fmt in valid_formats {
+            if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
+                return Ok(LiteralNode::Datetime(cow_val))
+            }
+        }
+
+        Err(RdfLiteError::InvalidDateTime(cow_val))
     }
 
-    pub(crate) fn new_gyear() {
-        todo!()
+    /// Declare a `LiteralNode::Decimal` type from the provided value.
+    /// 
+    /// Returns an `RdfLiteError::InvalidDecimal` if the provided value cannot 
+    /// be parsed as an `f32`.
+    pub(crate) fn new_decimal<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfLiteError> {
+        // Deliberately does not drop the `str` in place of the f32 at any 
+        // point, as the crate would only have to return it to that format for 
+        // io::Write.
+        let cow_val: Cow<'static, str> = value.into();
+
+        match cow_val.parse::<f32>() {
+            Ok(_) => Ok(LiteralNode::Decimal(cow_val)),
+            Err(_) => Err(RdfLiteError::InvalidDecimal(cow_val))
+        }
     }
-    
-    pub(crate) fn new_gyear_unchecked() {
-        todo!()
-    }
+
+    /// Declare a `LiteralNode::GYear` type from the provided value.
+    /// 
+    /// Returns an `RdfLiteError::InvalidGYear` if the provided value cannot be 
+    /// parsed as an XSD gYear (CE/BCE year, with or without a timezone offset).
+    pub(crate) fn new_gyear<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfLiteError> {
+        let valid_formats = ["%Y", "%Y%:z"];
+
+        let cow_val: Cow<'static, str> = value.into();
+
+        for fmt in valid_formats {
+            if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
+                return Ok(LiteralNode::GYear(cow_val))
+            }
+        }
+
+        Err(RdfLiteError::InvalidGYear(cow_val))
+    }        
 
     /// Create a new `LiteralNode::String` with the provided `language` and 
     /// string `value`.
@@ -172,6 +237,9 @@ impl WriteTriG for &LiteralNode {
                 writer.write_all(dt.as_bytes())?;
                 writer.write_all(b"\"^^xsd:dateTime")?;
             },
+            LiteralNode::Decimal(dec) => {
+                writer.write_all(dec.to_string().as_bytes())?;
+            }
             LiteralNode::GYear(gy) => {
                 writer.write_all(b"\"")?;
                 writer.write_all(gy.as_bytes())?;

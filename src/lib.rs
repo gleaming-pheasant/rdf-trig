@@ -14,6 +14,7 @@ in a `DataStore` field.
 
 Exercise extreme caution if ever developing means that could make these `...Id`s 
 constructable by any other method. */
+pub mod errors;
 mod graphs;
 mod groups;
 mod namespaces;
