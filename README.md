@@ -1,15 +1,15 @@
-# rdf-lite
+# rdf-trig
 A crate for quick formatting of RDF triples from Rust native types.
 
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
 for adding to a `DataStore`. It also provides traits for writing the `DataStore` 
 and individual elements to [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)).
 
-No more output formats are currently planned.
-
 The main impetus of this crate is speed. It uses types and methods explicitly 
 for reading and writing types with as little reallocation, copying and memory 
 peaking as possible.
+
+This is not a labour of love, but necessity. It will likely not be maintained.
 
 # TODO!
  - Tests, tests and more tests!
