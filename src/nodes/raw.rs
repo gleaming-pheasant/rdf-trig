@@ -111,12 +111,12 @@ impl WriteTriG for BlankNode {
 /// Because there is nothing to explicitly intern in a `LiteralNode`, this type 
 /// directly implements the [`WriteTriG`] trait for TriG formatting.
 /// 
-/// This enum is __non_exhaustive__, with additional types not currently 
-/// planned.
+/// This enum is __non_exhaustive__, with additional XML Schema types not 
+/// currently planned.
 #[derive(Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub enum LiteralNode {
-    Boolean(Cow<'static, str>),
+    Boolean(bool),
     Datetime(Cow<'static, str>),
     Decimal(Cow<'static, str>),
     GYear(Cow<'static, str>),
@@ -129,21 +129,23 @@ impl LiteralNode {
     /// Returns an `RdfLiteError::InvalidBoolean` if the provided value cannot 
     /// be parsed as an XSD boolean ("true", "false", "1", "0").
     /// 
-    /// The input value, is retained for output (if "0" is written, "0" will be 
-    /// returned).
-    pub(crate) fn new_boolean<C: Into<Cow<'static, str>>>(value: C)
+    /// Though the input will eventually be written with [`Write`], this type 
+    /// casts the input value to a native [`bool`], for two reasons: the cost of 
+    /// conversion to a single byte is acceptable, and the saving of not having 
+    /// to write the output with the full `"xsd::boolean"` suffix is considered 
+    /// acceptable.
+    /// 
+    /// For ease, `LiteralNode` also implements [`From<bool>`] for quick 
+    /// conversions.
+    pub(crate) fn boolean<C: Into<Cow<'static, str>>>(value: C)
     -> Result<LiteralNode, RdfLiteError> {
-        let valid_options = ["true", "false", "1", "0"];
-
         let cow_val: Cow<'static, str> = value.into();
 
-        for opt in valid_options {
-            if &cow_val == opt {
-                return Ok(LiteralNode::Boolean(cow_val))
-            }
-        }
-
-        Err(RdfLiteError::InvalidBoolean(cow_val))
+        match &*cow_val {
+            "true" | "1" => Ok(LiteralNode::Boolean(true)),
+            "false" | "0" => Ok(LiteralNode::Boolean(false)),
+            _ => Err(RdfLiteError::InvalidBoolean(cow_val))
+        }        
     }
 
     /// Declare a `LiteralNode::Datetime` from the provided value.
@@ -151,7 +153,7 @@ impl LiteralNode {
     /// Returns an `RdfLiteError::InvalidDateTime` if the provided value cannot 
     /// be parsed as an XSD dateTime ("1900-01-01T00:00:00.000", with or without 
     /// "Z" or a timezone offset).
-    pub(crate) fn new_datetime<C: Into<Cow<'static, str>>>(value: C)
+    pub(crate) fn datetime<C: Into<Cow<'static, str>>>(value: C)
     -> Result<LiteralNode, RdfLiteError> {
         let valid_formats = ["%+", "%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"];
 
@@ -170,7 +172,10 @@ impl LiteralNode {
     /// 
     /// Returns an `RdfLiteError::InvalidDecimal` if the provided value cannot 
     /// be parsed as an `f32`.
-    pub(crate) fn new_decimal<C: Into<Cow<'static, str>>>(value: C)
+    /// 
+    /// For ease, `LiteralNode` also implements [`From<f32>`] for quick 
+    /// conversions.
+    pub(crate) fn decimal<C: Into<Cow<'static, str>>>(value: C)
     -> Result<LiteralNode, RdfLiteError> {
         // Deliberately does not drop the `str` in place of the f32 at any 
         // point, as the crate would only have to return it to that format for 
@@ -187,7 +192,7 @@ impl LiteralNode {
     /// 
     /// Returns an `RdfLiteError::InvalidGYear` if the provided value cannot be 
     /// parsed as an XSD gYear (CE/BCE year, with or without a timezone offset).
-    pub(crate) fn new_gyear<C: Into<Cow<'static, str>>>(value: C)
+    pub(crate) fn gyear<C: Into<Cow<'static, str>>>(value: C)
     -> Result<LiteralNode, RdfLiteError> {
         let valid_formats = ["%Y", "%Y%:z"];
 
@@ -229,9 +234,24 @@ impl LiteralNode {
     }
 }
 
+impl From<bool> for LiteralNode {
+    fn from(value: bool) -> Self {
+        LiteralNode::Boolean(value)
+    }
+}
+
+impl From<f32> for LiteralNode {
+    fn from(value: f32) -> Self {
+        LiteralNode::Decimal(Cow::Owned(value.to_string()))
+    }
+}
+
 impl WriteTriG for &LiteralNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         match self {
+            LiteralNode::Boolean(b) => {
+                writer.write_all(b.to_string().as_bytes())?;
+            },
             LiteralNode::Datetime(dt) => {
                 writer.write_all(b"\"")?;
                 writer.write_all(dt.as_bytes())?;

@@ -30,7 +30,6 @@ peaking as possible.
         - `\\` (\\)
  - Complete validation for literal types and IRIs,
     - Expose new_...() functions to Object struct for `LiteralNode`s,
-    - Finalise formatting of `LiteralNode`'s `WriteTrig` trait,
     - Include validating IRIs to not contain any unescaped invalid characters.
 
 ## Panic! Don't create too many triples!
