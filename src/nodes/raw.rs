@@ -439,85 +439,152 @@ mod tests {
     use super::*;
     use crate::traits::WriteTriG;
 
+
     #[test]
-    fn test_bools() {
+    fn test_true_bool_from_string() {
         let good_true_one = "true";
         assert!(LiteralNode::boolean(good_true_one).is_ok());
+    }
+
+    #[test]
+    fn test_true_bool_from_number() {
         let good_true_two = String::from("1");
         assert!(LiteralNode::boolean(good_true_two).is_ok());
+    }
 
+    #[test]
+    fn test_bad_true_bool() {
         let bad_true_one = String::from("True");
         assert!(LiteralNode::boolean(bad_true_one).is_err());
+    }
+
+    #[test]
+    fn test_invalid_string_bool() {
         let bad_true_two = "A completely random str.";
         assert!(LiteralNode::boolean(bad_true_two).is_err());
+    }
 
+    #[test]
+    fn test_true_bool_from_native() {
         let raw_true = true;
         let raw_true_built = LiteralNode::from(raw_true);
         assert_eq!(raw_true_built, LiteralNode::Boolean(true));
+    }
+
+    #[test]
+    fn test_true_write_trig() {
+        let raw_true = LiteralNode::Boolean(true);
 
         let mut buf: Vec<u8> = vec![];
-        raw_true_built.write_trig(&mut buf).unwrap();
+        raw_true.write_trig(&mut buf).unwrap();
 
         let as_string = String::from_utf8(buf).unwrap();
         assert_eq!(as_string, String::from("true"));
+    }
 
+    #[test]
+    fn test_false_bool_from_string() {
         let good_false_one = "false";
         assert!(LiteralNode::boolean(good_false_one).is_ok());
+    }
+
+    #[test]
+    fn test_false_bool_from_number_string() {
         let good_false_two = String::from("0");
-        assert!(LiteralNode::boolean(good_false_two).is_ok());
+        assert!(LiteralNode::boolean(good_false_two).is_ok());        
+    }
 
-        let bad_false_one = String::from("False");
-        assert!(LiteralNode::boolean(bad_false_one).is_err());
-        let bad_false_two = "A completely random str.";
-        assert!(LiteralNode::boolean(bad_false_two).is_err());
-
+    #[test]
+    fn test_false_bool_from_native() {
         let raw_false = false;
         let raw_false_built = LiteralNode::from(raw_false);
         assert_eq!(raw_false_built, LiteralNode::Boolean(false));
+    }
+
+    #[test]
+    fn test_false_write_trig() {
+        let raw_false = LiteralNode::Boolean(false);
 
         let mut buf: Vec<u8> = vec![];
-        raw_false_built.write_trig(&mut buf).unwrap();
+        raw_false.write_trig(&mut buf).unwrap();
 
         let as_string = String::from_utf8(buf).unwrap();
         assert_eq!(as_string, String::from("false"));
     }
 
     #[test]
-    fn test_string_datetimes() {
-        let with_utc = "2026-03-02T09:00:00.000Z";
-        assert!(LiteralNode::datetime(with_utc).is_ok());
+    fn test_datetime_from_utc_string() {
+        assert!(LiteralNode::datetime(
+            // String to test Into<Cow<...>> also.
+            String::from("2026-03-02T09:00:00.000Z")
+        ).is_ok());
+    }
 
-        let with_utc_no_secs = String::from("2026-03-02T09:00:00Z");
-        assert!(LiteralNode::datetime(with_utc_no_secs).is_ok());
+    #[test]
+    fn test_datetime_from_utc_string_no_secs() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00Z").is_ok());
+    }
 
-        let with_tz = "2026-03-02T09:00:00.000+01:00";
-        assert!(LiteralNode::datetime(with_tz).is_ok());
+    #[test]
+    fn test_datetime_with_explicit_tz() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00.000+01:00").is_ok());
+    }
 
-        let without_tz_or_utc = "2026-03-02T09:00:00";
-        assert!(LiteralNode::datetime(without_tz_or_utc).is_ok());
+    #[test]
+    fn test_datetime_with_no_tz_or_utc() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00").is_ok());
+    }
 
-        let invalid = String::from("Random string");
-        assert!(LiteralNode::datetime(invalid).is_err())
+    #[test]
+    fn test_invalid_datetime() {
+        assert!(LiteralNode::datetime("Random string").is_err())
     }
     
     #[cfg(feature = "time")]
     #[test]
-    fn test_time_datetimes() {
+    fn test_time_primitive_datetime_try_from() {
         use time::macros::datetime;
 
         let primitive = datetime!(2026-03-02 09:00:00.000);
-        let primitive_node = LiteralNode::try_from(primitive).unwrap();
+        assert!(LiteralNode::try_from(primitive).is_ok());
+    }
+
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_offset_datetime_try_from() {
+        use time::macros::datetime;
+
+        let offset = datetime!(2026-03-02 09:00:00.000 +1);
+        assert!(LiteralNode::try_from(offset).is_ok());
+    }
+
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_primitive_write_trig() {
+        use time::macros::datetime;
+
+        let primitive_node = LiteralNode::try_from(
+            datetime!(2026-03-02 09:00:00.000)
+        ).unwrap();
 
         let mut primitive_buf = vec![];
         primitive_node.write_trig(&mut primitive_buf).unwrap();
         let primitive_string = String::from_utf8(primitive_buf).unwrap();
+
         assert_eq!(
             primitive_string,
             String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
         );
+    }
 
-        let offset = datetime!(2026-03-02 09:00:00.000 +1);
-        let offset_node = LiteralNode::try_from(offset).unwrap();
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_offset_write_trig() {
+        use time::macros::datetime;
+
+        let offset_node = LiteralNode::try_from(
+            datetime!(2026-03-02 09:00:00.000 +1)
+        ).unwrap();
 
         let mut offset_buf = vec![];
         offset_node.write_trig(&mut offset_buf).unwrap();
@@ -530,9 +597,7 @@ mod tests {
 
     #[cfg(feature = "chrono")]
     #[test]
-    fn test_chrono_datetimes() {
-        use chrono::TimeZone;
-
+    fn test_chrono_naive_write_trig() {
         let naive = chrono::NaiveDateTime::parse_from_str(
             "2026-03-02T09:00:00.00000", "%Y-%m-%dT%H:%M:%S%.f"
         ).unwrap();
@@ -546,19 +611,12 @@ mod tests {
             naive_string,
             String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
         );
+    }
 
-        let naive = chrono::NaiveDateTime::parse_from_str(
-            "2026-03-02T09:00:00.00000", "%Y-%m-%dT%H:%M:%S%.f"
-        ).unwrap();
-        let naive_node = LiteralNode::from(naive);
-
-        let mut naive_buf = vec![];
-        naive_node.write_trig(&mut naive_buf).unwrap();
-        let naive_string = String::from_utf8(naive_buf).unwrap();
-        assert_eq!(
-            naive_string,
-            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
-        );
+    #[cfg(feature = "chrono")]
+    #[test]
+    fn test_chrono_datetime_offset_write_trig() {
+        use chrono::TimeZone;
 
         let offset = chrono::FixedOffset::east_opt(5 * 3600).unwrap()
             .with_ymd_and_hms(2026, 03, 02, 09, 0, 0).unwrap();
@@ -570,6 +628,34 @@ mod tests {
         assert_eq!(
             offset_string,
             String::from("\"2026-03-02T09:00:00+05:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[test]
+    fn test_decimal_from_int_string() {
+        assert!(LiteralNode::decimal("69").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_decimal_string() {
+        assert!(LiteralNode::decimal("69.420").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_signed_int_string() {
+        assert!(LiteralNode::decimal("+24").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_signed_decimal_string() {
+        assert!(LiteralNode::decimal("-2.468").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_f32() {
+        assert_eq!(
+            LiteralNode::Decimal(Cow::Owned(String::from("69.42"))),
+            LiteralNode::from(69.420f32)
         );
     }
 }
