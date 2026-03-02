@@ -2,33 +2,37 @@
 use std::borrow::Cow;
 
 #[derive(Debug)]
-pub enum RdfLiteError {
+pub enum RdfTrigError {
     InvalidBoolean(Cow<'static, str>),
     InvalidDateTime(Cow<'static, str>),
     InvalidDecimal(Cow<'static, str>),
-    InvalidGYear(Cow<'static, str>)
+    InvalidGYear(Cow<'static, str>),
+    InvalidLanguage(Cow<'static, str>)
 }
 
-impl std::fmt::Display for RdfLiteError {
+impl std::fmt::Display for RdfTrigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RdfLiteError::InvalidBoolean(bool) => {
+            RdfTrigError::InvalidBoolean(bool) => {
                 write!(f, "{} is an invalid boolean", bool)
             },
-            RdfLiteError::InvalidDateTime(dt) => {
+            RdfTrigError::InvalidDateTime(dt) => {
                 write!(f, "{} is an invalid dateTime", dt)
             },
-            RdfLiteError::InvalidDecimal(dec) => {
+            RdfTrigError::InvalidDecimal(dec) => {
                 write!(f, "{} is an invalid decimal", dec)
             },
-            RdfLiteError::InvalidGYear(gy) => {
+            RdfTrigError::InvalidGYear(gy) => {
                 write!(f, "{} is an invalid gYear", gy)
+            },
+            RdfTrigError::InvalidLanguage(lang) => {
+                write!(f, "{} is an invalid language code", lang)
             }
         }
     }
 }
 
-impl std::error::Error for RdfLiteError {
+impl std::error::Error for RdfTrigError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         // Update if any external errors are required.
         None

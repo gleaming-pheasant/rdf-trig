@@ -8,7 +8,7 @@ use time::macros::format_description;
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 
-use crate::errors::RdfLiteError;
+use crate::errors::RdfTrigError;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
 
@@ -144,7 +144,7 @@ pub enum LiteralNode {
 impl LiteralNode {
     /// Declare a `LiteralNode::Boolean` from the provided value.
     /// 
-    /// Returns an `RdfLiteError::InvalidBoolean` if the provided value cannot 
+    /// Returns an `RdfTrigError::InvalidBoolean` if the provided value cannot 
     /// be parsed as an XSD boolean ("true", "false", "1", "0").
     /// 
     /// Though the input will eventually be written with [`Write`], this type 
@@ -156,19 +156,19 @@ impl LiteralNode {
     /// For ease, `LiteralNode` also implements [`From<bool>`] for quick 
     /// conversions.
     pub(crate) fn boolean<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<LiteralNode, RdfLiteError> {
+    -> Result<LiteralNode, RdfTrigError> {
         let cow_val: Cow<'static, str> = value.into();
 
         match &*cow_val {
             "true" | "1" => Ok(LiteralNode::Boolean(true)),
             "false" | "0" => Ok(LiteralNode::Boolean(false)),
-            _ => Err(RdfLiteError::InvalidBoolean(cow_val))
+            _ => Err(RdfTrigError::InvalidBoolean(cow_val))
         }        
     }
 
     /// Declare a `LiteralNode::Datetime` from the provided value.
     /// 
-    /// Returns an `RdfLiteError::InvalidDateTime` if the provided value cannot 
+    /// Returns an `RdfTrigError::InvalidDateTime` if the provided value cannot 
     /// be parsed as an XML Schema `dateTime` ("1900-01-01T00:00:00.000", with 
     /// or without "Z" or a timezone offset).
     /// 
@@ -177,35 +177,33 @@ impl LiteralNode {
     /// [`time::OffsetDateTime`] and [`time::PrimitiveDateTime`] with the 
     /// relevant `chrono` or `time` feature flags enabled.
     pub(crate) fn datetime<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<LiteralNode, RdfLiteError> {
+    -> Result<LiteralNode, RdfTrigError> {
         let cow_val: Cow<'static, str> = value.into();
 
         if OffsetDateTime::parse(&cow_val, &Rfc3339).is_ok() {
             return Ok(LiteralNode::Datetime(cow_val));
         }
 
-        let is_naive = PrimitiveDateTime::parse(
+        if PrimitiveDateTime::parse(
             &cow_val, &FMT_NAIVE_SUBSECOND
         ).is_ok() || PrimitiveDateTime::parse(
             &cow_val, &FMT_NAIVE_ISO
-        ).is_ok();
-
-        if is_naive {
+        ).is_ok() {
             Ok(LiteralNode::Datetime(cow_val))
         } else {
-            Err(RdfLiteError::InvalidDateTime(cow_val))
+            Err(RdfTrigError::InvalidDateTime(cow_val))
         }
     }
 
     /// Declare a `LiteralNode::Decimal` type from the provided value.
     /// 
-    /// Returns an `RdfLiteError::InvalidDecimal` if the provided value cannot 
+    /// Returns an `RdfTrigError::InvalidDecimal` if the provided value cannot 
     /// be parsed as an `f32`.
     /// 
     /// For ease, `LiteralNode` also implements [`From<f32>`] for quick 
     /// conversions.
     pub(crate) fn decimal<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<LiteralNode, RdfLiteError> {
+    -> Result<LiteralNode, RdfTrigError> {
         // Deliberately does not drop the `str` in place of the f32 at any 
         // point, as the crate would only have to return it to that format for 
         // io::Write.
@@ -213,37 +211,90 @@ impl LiteralNode {
 
         match cow_val.parse::<f32>() {
             Ok(_) => Ok(LiteralNode::Decimal(cow_val)),
-            Err(_) => Err(RdfLiteError::InvalidDecimal(cow_val))
+            Err(_) => Err(RdfTrigError::InvalidDecimal(cow_val))
         }
     }
 
     /// Declare a `LiteralNode::GYear` type from the provided value.
     /// 
-    /// Returns an `RdfLiteError::InvalidGYear` if the provided value cannot be 
+    /// Returns an `RdfTrigError::InvalidGYear` if the provided value cannot be 
     /// parsed as an XSD gYear (CE/BCE year, with or without a timezone offset).
     pub(crate) fn gyear<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<LiteralNode, RdfLiteError> {
-        let valid_formats = ["%Y", "%Y%:z"];
-
+    -> Result<LiteralNode, RdfTrigError> {
         let cow_val: Cow<'static, str> = value.into();
+        let bytes = cow_val.as_bytes();
+        let len = bytes.len(); // Saved as used repeatedly.
 
-        // for fmt in valid_formats {
-        //     if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
-        //         return Ok(LiteralNode::GYear(cow_val))
-        //     }
-        // }
+        if len < 4 { return Err(RdfTrigError::InvalidGYear(cow_val)) }
 
-        Err(RdfLiteError::InvalidGYear(cow_val))
-    }        
+        let mut cursor = 0;
+
+        if bytes[cursor] == b'-' {
+            cursor += 1;
+        }
+
+        let year_start = cursor; // 0 if no sign, 1 if signed.
+        
+        // Breaks if encounters a character that isn't a digit or reaches end.
+        while cursor < len && bytes[cursor].is_ascii_digit() {
+            cursor += 1;
+        }
+
+        if cursor - year_start < 4 {
+            // Still not long enough, so invalid.
+            return Err(RdfTrigError::InvalidGYear(cow_val));
+        }
+
+        if cursor < len {
+            let remaining = &bytes[cursor..];
+            match remaining {
+                // One character, "Z" means UTC.
+                [b'Z'] => cursor += 1,
+                // 6 characters in a valid format (eg. "+01:00").
+                [sign @ (b'+' | b'-'), h1, h2, b':', m1, m2] 
+                    if h1.is_ascii_digit() && h2.is_ascii_digit() 
+                    && m1.is_ascii_digit() && m2.is_ascii_digit() => {
+                    cursor += 6;
+                }
+                _ => return Err(RdfTrigError::InvalidGYear(cow_val)),
+            }
+        }
+
+        // Check entire string has been parsed.
+        if cursor == len {
+            Ok(LiteralNode::GYear(cow_val))
+        } else {
+            // Too long/too many characters
+            Err(RdfTrigError::InvalidDateTime(cow_val))
+        }
+    }
 
     /// Create a new `LiteralNode::String` with the provided `language` and 
     /// string `value`.
-    pub(crate) fn string<L, V>(language: Option<L>, value: V) -> LiteralNode 
+    /// 
+    /// Returns an `RdfTrigError::InvalidLanguage` if the provided language is 
+    /// not a valid ISO-639 language code.
+    pub(crate) fn string<L, V>(
+        language: Option<L>, value: V
+    ) -> Result<LiteralNode, RdfTrigError>
     where
         L: Into<Cow<'static, str>>,
         V: Into<Cow<'static, str>>
     {
-        LiteralNode::String(StringLiteral::new(language, value))
+        let lang_cow_opt = language.map(Into::into);
+
+        if let Some(ref lang_cow) = lang_cow_opt {
+            let bytes = lang_cow.as_bytes();
+            if !(bytes.len() == 2 || bytes.len() == 3) 
+            && !bytes.iter().all(u8::is_ascii_lowercase) {
+                // Unwrap is safe as is within if let Some(var) clause.
+                return Err(RdfTrigError::InvalidLanguage(lang_cow_opt.unwrap()))
+            }
+        }
+
+        Ok(LiteralNode::String(StringLiteral {
+            language: lang_cow_opt, value: value.into()
+        }))
     }
 
     /// Create a new `LiteralNode::String` with the `language` code already set 
@@ -314,7 +365,7 @@ impl From<DateTime<Utc>> for LiteralNode {
 
 #[cfg(feature = "time")]
 impl TryFrom<PrimitiveDateTime> for LiteralNode {
-    type Error = RdfLiteError;
+    type Error = RdfTrigError;
 
     fn try_from(value: PrimitiveDateTime) -> Result<Self, Self::Error> {
         let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]");
@@ -322,7 +373,7 @@ impl TryFrom<PrimitiveDateTime> for LiteralNode {
         match value.format(&fmt) {
             Ok(dt_str) => Ok(LiteralNode::Datetime(Cow::Owned(dt_str))),
             Err(_) => {
-                Err(RdfLiteError::InvalidDateTime(
+                Err(RdfTrigError::InvalidDateTime(
                         "Invalid PrimitiveDateTime".into()
                 ))
             }
@@ -332,13 +383,13 @@ impl TryFrom<PrimitiveDateTime> for LiteralNode {
 
 #[cfg(feature = "time")]
 impl TryFrom<OffsetDateTime> for LiteralNode {
-    type Error = RdfLiteError;
+    type Error = RdfTrigError;
 
     fn try_from(value: OffsetDateTime) -> Result<Self, Self::Error> {
         match value.format(&Rfc3339) {
             Ok(dt_str) => Ok(LiteralNode::Datetime(Cow::Owned(dt_str))),
             Err(_) => {
-                Err(RdfLiteError::InvalidDateTime(
+                Err(RdfTrigError::InvalidDateTime(
                         "Invalid OffsetDateTime".into()
                 ))
             }
@@ -386,20 +437,18 @@ impl WriteTriG for LiteralNode {
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct StringLiteral {
+pub(crate) struct StringLiteral {
     language: Option<Cow<'static, str>>,
     value: Cow<'static, str>
 }
 
 impl StringLiteral {
     /// Create a new `StringLiteral` from a `language` tag and `value`.
-    pub(crate) fn new<L, V>(language: Option<L>, value: V) -> StringLiteral 
-    where
-        L: Into<Cow<'static, str>>,
-        V: Into<Cow<'static, str>>
-    {
+    pub(crate) fn new(
+        language: Option<Cow<'static, str>>, value: Cow<'static, str>
+    ) -> StringLiteral {
         StringLiteral {
-            language: language.map(|l| l.into()),
+            language: language,
             value: value.into()
         }
     }
@@ -491,7 +540,7 @@ mod tests {
     #[test]
     fn test_false_bool_from_number_string() {
         let good_false_two = String::from("0");
-        assert!(LiteralNode::boolean(good_false_two).is_ok());        
+        assert!(LiteralNode::boolean(good_false_two).is_ok());
     }
 
     #[test]
@@ -656,6 +705,98 @@ mod tests {
         assert_eq!(
             LiteralNode::Decimal(Cow::Owned(String::from("69.42"))),
             LiteralNode::from(69.420f32)
+        );
+    }
+    
+    #[test]
+    fn test_valid_gyear_signed() {
+        assert!(LiteralNode::gyear("-0099").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_unsigned() {
+        assert!(LiteralNode::gyear("1999").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_utc() {
+        assert!(LiteralNode::gyear("-0069Z").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_offset() {
+        assert!(LiteralNode::gyear("-0069+12:00").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_invalid_offset() {
+        assert!(LiteralNode::gyear("-0069+12:00:59").is_err());
+    }
+
+    #[test]
+    fn test_invalid_gyear_too_short() {
+        assert!(LiteralNode::gyear("-420").is_err());
+    }
+
+    #[test]
+    fn test_valid_language_string() {
+        assert!(LiteralNode::string(
+            Some("fr"), String::from("oui")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_invalid_language_string() {
+        assert!(LiteralNode::string(
+            Some("french"), String::from("non")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_no_language_string() {
+        assert!(LiteralNode::string(
+            None::<String>, String::from("random string")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_no_language_string_write_trig() {
+        let node = LiteralNode::string_no_lang("My Literal");
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"")
+        );
+    }
+
+    #[test]
+    fn test_en_language_string_write_trig() {
+        let node = LiteralNode::string_en("My Literal");
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"@en")
+        );
+    }
+
+    #[test]
+    fn test_custom_language_string_write_trig() {
+        let node = LiteralNode::string(
+            Some("eng"), "My Literal"
+        ).unwrap();
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"@eng")
         );
     }
 }
