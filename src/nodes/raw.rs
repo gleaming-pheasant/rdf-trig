@@ -317,7 +317,9 @@ impl TryFrom<PrimitiveDateTime> for LiteralNode {
     type Error = RdfLiteError;
 
     fn try_from(value: PrimitiveDateTime) -> Result<Self, Self::Error> {
-        match value.format(&Rfc3339) {
+        let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]");
+
+        match value.format(&fmt) {
             Ok(dt_str) => Ok(LiteralNode::Datetime(Cow::Owned(dt_str))),
             Err(_) => {
                 Err(RdfLiteError::InvalidDateTime(
@@ -481,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    fn test_datetimes() {
+    fn test_string_datetimes() {
         let with_utc = "2026-03-02T09:00:00.000Z";
         assert!(LiteralNode::datetime(with_utc).is_ok());
 
@@ -496,5 +498,78 @@ mod tests {
 
         let invalid = String::from("Random string");
         assert!(LiteralNode::datetime(invalid).is_err())
+    }
+    
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_datetimes() {
+        use time::macros::datetime;
+
+        let primitive = datetime!(2026-03-02 09:00:00.000);
+        let primitive_node = LiteralNode::try_from(primitive).unwrap();
+
+        let mut primitive_buf = vec![];
+        primitive_node.write_trig(&mut primitive_buf).unwrap();
+        let primitive_string = String::from_utf8(primitive_buf).unwrap();
+        assert_eq!(
+            primitive_string,
+            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
+        );
+
+        let offset = datetime!(2026-03-02 09:00:00.000 +1);
+        let offset_node = LiteralNode::try_from(offset).unwrap();
+
+        let mut offset_buf = vec![];
+        offset_node.write_trig(&mut offset_buf).unwrap();
+        let offset_string = String::from_utf8(offset_buf).unwrap();
+        assert_eq!(
+            offset_string,
+            String::from("\"2026-03-02T09:00:00+01:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[cfg(feature = "chrono")]
+    #[test]
+    fn test_chrono_datetimes() {
+        use chrono::TimeZone;
+
+        let naive = chrono::NaiveDateTime::parse_from_str(
+            "2026-03-02T09:00:00.00000", "%Y-%m-%dT%H:%M:%S%.f"
+        ).unwrap();
+        let naive_node = LiteralNode::from(naive);
+
+        let mut naive_buf = vec![];
+        naive_node.write_trig(&mut naive_buf).unwrap();
+        let naive_string = String::from_utf8(naive_buf).unwrap();
+        println!("{naive_string}");
+        assert_eq!(
+            naive_string,
+            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
+        );
+
+        let naive = chrono::NaiveDateTime::parse_from_str(
+            "2026-03-02T09:00:00.00000", "%Y-%m-%dT%H:%M:%S%.f"
+        ).unwrap();
+        let naive_node = LiteralNode::from(naive);
+
+        let mut naive_buf = vec![];
+        naive_node.write_trig(&mut naive_buf).unwrap();
+        let naive_string = String::from_utf8(naive_buf).unwrap();
+        assert_eq!(
+            naive_string,
+            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
+        );
+
+        let offset = chrono::FixedOffset::east_opt(5 * 3600).unwrap()
+            .with_ymd_and_hms(2026, 03, 02, 09, 0, 0).unwrap();
+        let offset_node = LiteralNode::try_from(offset).unwrap();
+
+        let mut offset_buf = vec![];
+        offset_node.write_trig(&mut offset_buf).unwrap();
+        let offset_string = String::from_utf8(offset_buf).unwrap();
+        assert_eq!(
+            offset_string,
+            String::from("\"2026-03-02T09:00:00+05:00\"^^xsd:dateTime")
+        );
     }
 }
