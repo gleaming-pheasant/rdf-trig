@@ -1,9 +1,27 @@
 use std::borrow::Cow;
 use std::io::{Result as IoResult, Write};
 
+use time::{OffsetDateTime, PrimitiveDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::macros::format_description;
+
+#[cfg(feature = "chrono")]
+use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
+
 use crate::errors::RdfLiteError;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
+
+/// These `const`s allow compile-time format descriptions for validating 
+/// [`time::PrimitiveDateTime`]s. ISO-3339 formats are tested first, but these 
+/// provide a fallback in the event an offset (or "Z") is missing.
+/// 
+/// `dateTimes` are still valid hese are still valid XML Schema even if they are 
+/// missing this offset or UTC identifier.
+const FMT_NAIVE_SUBSECOND: &[time::format_description::FormatItem<'_>] = 
+    format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]");
+const FMT_NAIVE_ISO: &[time::format_description::FormatItem<'_>] = 
+    format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]");
 
 /// An `IriNode` is composed of a [`Namespace`] (to allow assigning the iri to a 
 /// shared iri using a `prefix`) and an `endpoint`.
@@ -151,21 +169,32 @@ impl LiteralNode {
     /// Declare a `LiteralNode::Datetime` from the provided value.
     /// 
     /// Returns an `RdfLiteError::InvalidDateTime` if the provided value cannot 
-    /// be parsed as an XSD dateTime ("1900-01-01T00:00:00.000", with or without 
-    /// "Z" or a timezone offset).
+    /// be parsed as an XML Schema `dateTime` ("1900-01-01T00:00:00.000", with 
+    /// or without "Z" or a timezone offset).
+    /// 
+    /// This crate uses `time` to validate XSD `dateTime`s, but implements 
+    /// [`From<>`] for [`chrono::DateTime`], [`chrono::NaiveDateTime`], 
+    /// [`time::OffsetDateTime`] and [`time::PrimitiveDateTime`] with the 
+    /// relevant `chrono` or `time` feature flags enabled.
     pub(crate) fn datetime<C: Into<Cow<'static, str>>>(value: C)
     -> Result<LiteralNode, RdfLiteError> {
-        let valid_formats = ["%+", "%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"];
-
         let cow_val: Cow<'static, str> = value.into();
 
-        for fmt in valid_formats {
-            if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
-                return Ok(LiteralNode::Datetime(cow_val))
-            }
+        if OffsetDateTime::parse(&cow_val, &Rfc3339).is_ok() {
+            return Ok(LiteralNode::Datetime(cow_val));
         }
 
-        Err(RdfLiteError::InvalidDateTime(cow_val))
+        let is_naive = PrimitiveDateTime::parse(
+            &cow_val, &FMT_NAIVE_SUBSECOND
+        ).is_ok() || PrimitiveDateTime::parse(
+            &cow_val, &FMT_NAIVE_ISO
+        ).is_ok();
+
+        if is_naive {
+            Ok(LiteralNode::Datetime(cow_val))
+        } else {
+            Err(RdfLiteError::InvalidDateTime(cow_val))
+        }
     }
 
     /// Declare a `LiteralNode::Decimal` type from the provided value.
@@ -198,11 +227,11 @@ impl LiteralNode {
 
         let cow_val: Cow<'static, str> = value.into();
 
-        for fmt in valid_formats {
-            if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
-                return Ok(LiteralNode::GYear(cow_val))
-            }
-        }
+        // for fmt in valid_formats {
+        //     if chrono::DateTime::parse_from_str(&cow_val, fmt).is_ok() {
+        //         return Ok(LiteralNode::GYear(cow_val))
+        //     }
+        // }
 
         Err(RdfLiteError::InvalidGYear(cow_val))
     }        
@@ -246,7 +275,76 @@ impl From<f32> for LiteralNode {
     }
 }
 
-impl WriteTriG for &LiteralNode {
+
+#[cfg(feature = "chrono")]
+impl From<NaiveDateTime> for LiteralNode {
+    fn from(value: NaiveDateTime) -> LiteralNode {
+        LiteralNode::Datetime(
+            Cow::Owned(value.format("%Y-%m-%dT%H:%M:%S").to_string())
+        )
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<DateTime<FixedOffset>> for LiteralNode {
+    fn from(value: DateTime<FixedOffset>) -> Self {
+        LiteralNode::Datetime(
+            Cow::Owned(value.format("%+").to_string())
+        )
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<DateTime<Local>> for LiteralNode {
+    fn from(value: DateTime<Local>) -> Self {
+        LiteralNode::Datetime(
+            Cow::Owned(value.format("%+").to_string())
+        )
+    }
+}
+
+#[cfg(feature = "chrono")]
+impl From<DateTime<Utc>> for LiteralNode {
+    fn from(value: DateTime<Utc>) -> Self {
+        LiteralNode::Datetime(
+            Cow::Owned(value.format("%+").to_string())
+        )
+    }
+}
+
+#[cfg(feature = "time")]
+impl TryFrom<PrimitiveDateTime> for LiteralNode {
+    type Error = RdfLiteError;
+
+    fn try_from(value: PrimitiveDateTime) -> Result<Self, Self::Error> {
+        match value.format(&Rfc3339) {
+            Ok(dt_str) => Ok(LiteralNode::Datetime(Cow::Owned(dt_str))),
+            Err(_) => {
+                Err(RdfLiteError::InvalidDateTime(
+                        "Invalid PrimitiveDateTime".into()
+                ))
+            }
+        }
+    }
+}
+
+#[cfg(feature = "time")]
+impl TryFrom<OffsetDateTime> for LiteralNode {
+    type Error = RdfLiteError;
+
+    fn try_from(value: OffsetDateTime) -> Result<Self, Self::Error> {
+        match value.format(&Rfc3339) {
+            Ok(dt_str) => Ok(LiteralNode::Datetime(Cow::Owned(dt_str))),
+            Err(_) => {
+                Err(RdfLiteError::InvalidDateTime(
+                        "Invalid OffsetDateTime".into()
+                ))
+            }
+        }
+    }
+}
+
+impl WriteTriG for LiteralNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         match self {
             LiteralNode::Boolean(b) => {
@@ -332,4 +430,71 @@ pub(crate) enum InternedNode {
     Blank(BlankNode),
     Iri(InternedIriNode),
     Literal(LiteralNode)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::traits::WriteTriG;
+
+    #[test]
+    fn test_bools() {
+        let good_true_one = "true";
+        assert!(LiteralNode::boolean(good_true_one).is_ok());
+        let good_true_two = String::from("1");
+        assert!(LiteralNode::boolean(good_true_two).is_ok());
+
+        let bad_true_one = String::from("True");
+        assert!(LiteralNode::boolean(bad_true_one).is_err());
+        let bad_true_two = "A completely random str.";
+        assert!(LiteralNode::boolean(bad_true_two).is_err());
+
+        let raw_true = true;
+        let raw_true_built = LiteralNode::from(raw_true);
+        assert_eq!(raw_true_built, LiteralNode::Boolean(true));
+
+        let mut buf: Vec<u8> = vec![];
+        raw_true_built.write_trig(&mut buf).unwrap();
+
+        let as_string = String::from_utf8(buf).unwrap();
+        assert_eq!(as_string, String::from("true"));
+
+        let good_false_one = "false";
+        assert!(LiteralNode::boolean(good_false_one).is_ok());
+        let good_false_two = String::from("0");
+        assert!(LiteralNode::boolean(good_false_two).is_ok());
+
+        let bad_false_one = String::from("False");
+        assert!(LiteralNode::boolean(bad_false_one).is_err());
+        let bad_false_two = "A completely random str.";
+        assert!(LiteralNode::boolean(bad_false_two).is_err());
+
+        let raw_false = false;
+        let raw_false_built = LiteralNode::from(raw_false);
+        assert_eq!(raw_false_built, LiteralNode::Boolean(false));
+
+        let mut buf: Vec<u8> = vec![];
+        raw_false_built.write_trig(&mut buf).unwrap();
+
+        let as_string = String::from_utf8(buf).unwrap();
+        assert_eq!(as_string, String::from("false"));
+    }
+
+    #[test]
+    fn test_datetimes() {
+        let with_utc = "2026-03-02T09:00:00.000Z";
+        assert!(LiteralNode::datetime(with_utc).is_ok());
+
+        let with_utc_no_secs = String::from("2026-03-02T09:00:00Z");
+        assert!(LiteralNode::datetime(with_utc_no_secs).is_ok());
+
+        let with_tz = "2026-03-02T09:00:00.000+01:00";
+        assert!(LiteralNode::datetime(with_tz).is_ok());
+
+        let without_tz_or_utc = "2026-03-02T09:00:00";
+        assert!(LiteralNode::datetime(without_tz_or_utc).is_ok());
+
+        let invalid = String::from("Random string");
+        assert!(LiteralNode::datetime(invalid).is_err())
+    }
 }
