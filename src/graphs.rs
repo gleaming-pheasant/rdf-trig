@@ -6,6 +6,7 @@ use crate::FastIndexSet;
 use crate::groups::triples::TripleView;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
+use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// A wrapper around an [`IndexSet<InternedGraph>`] which acts as a fast store 
 /// for unique [`Graph`] values.
@@ -92,6 +93,11 @@ impl InternedGraph {
     }
 }
 
+/// As with IRI nodes underlying `Subject`s, `Predicate`s and `Object`s, this 
+/// is a combination of a [`Namespace`] and an `endpoint`.
+/// 
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug, Hash)]
 pub struct Graph {
     namespace: Namespace,
@@ -108,6 +114,9 @@ impl Graph {
 
     /// Create a new [`Graph`], simultaneously declaring its [`Namespace`] from 
     /// a `prefix` and `iri`.
+    /// 
+    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
+    /// is invalid.
     pub fn new_with_new_namespace<P, I, E>(
         prefix: P, iri: I, endpoint: E
     ) -> Graph
@@ -230,9 +239,9 @@ impl<'a> FullGraphView<'a> {
 
 impl<'a> WriteTriG for FullGraphView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        writer.write_all(self.graph.namespace().prefix().as_bytes())?;
+        write_escaped_local_name(writer, self.graph.namespace().prefix())?;
         writer.write_all(b":")?;
-        writer.write_all(self.graph.endpoint().as_bytes())?;
+        write_escaped_url_component(writer, self.graph.endpoint())?;
         writer.write_all(b" { ")?;
 
         for triple in &self.triples {

@@ -1,11 +1,9 @@
-use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
 use crate::FastIndexSet;
-use crate::graphs::{GraphId, GraphView};
-use crate::groups::triples::{Triple, TripleView};
+use crate::graphs::GraphId;
+use crate::groups::triples::Triple;
 use crate::nodes::NodeId;
-use crate::traits::WriteTriG;
 
 /// A [`Quad`] is a [`Triple`] with an optional [`GraphId`] to assign it to a 
 /// [`Graph`] that has been registered with a 
@@ -101,17 +99,6 @@ impl QuadStore {
     pub(crate) fn intern_quad(&mut self, quad: InternedQuad) -> QuadId {
         QuadId::from(self.store.insert_full(quad).0)
     }
-
-    /// For the given `GraphId`, return a `Vec<(NodeId, NodeId, NodeId)>` for 
-    /// the interned `subject`, `predicate` and `object`.
-    pub(crate) fn query_nodes_by_graph(
-        &self, graph_id: GraphId
-    ) -> Vec<(NodeId, NodeId, NodeId)> {
-        self.store.iter()
-            .filter(|q| q.graph == graph_id)
-            .map(|q| (q.subject_id(), q.predicate_id(), q.predicate_id()))
-            .collect()
-    }
 }
 
 impl<'a> IntoIterator for &'a QuadStore {
@@ -121,32 +108,5 @@ impl<'a> IntoIterator for &'a QuadStore {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.store.iter()
-    }
-}
-
-/// A `QuadView`, like other `...View` objects in this crate, is a view on 
-/// interned data. This struct provides views into a [`Graph`] and its 
-/// associated `subject`, `predicate` and `object`, via [`NodeView`]s.
-/// 
-/// A `QuadView` cannot be constructed directly. It must be retrieved from a 
-/// [`DataStore`](crate::store::DataStore).
-/// 
-/// Accessing a collection of [`TripleView`](crate::groups::triples::TripleView)s 
-/// per one [`Graph`] is more efficient for outputting to the TriG format, with 
-/// its implementation of [`WriteTriG`], which can be
-#[derive(Debug)]
-pub(crate) struct QuadView<'a> {
-    graph: GraphView<'a>,
-    triple: TripleView<'a>
-}
-
-impl<'a> WriteTriG for QuadView<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        writer.write_all(self.graph.namespace().prefix().as_bytes())?;
-        writer.write_all(b":")?;
-        writer.write_all(self.graph.endpoint().as_bytes())?;
-        writer.write_all(b" { ")?;
-        self.triple.write_trig(writer)?;
-        writer.write_all(b" }")
     }
 }
