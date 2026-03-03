@@ -461,22 +461,12 @@ impl WriteTriG for LiteralNode {
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct StringLiteral {
+pub struct StringLiteral {
     language: Option<Cow<'static, str>>,
     value: Cow<'static, str>
 }
 
 impl StringLiteral {
-    /// Create a new `StringLiteral` from a `language` tag and `value`.
-    pub(crate) fn new(
-        language: Option<Cow<'static, str>>, value: Cow<'static, str>
-    ) -> StringLiteral {
-        StringLiteral {
-            language: language,
-            value: value.into()
-        }
-    }
-
     /// Create a new `StringLiteral` with the `language` set to Some("en").
     pub(crate) fn new_en<V: Into<Cow<'static, str>>>(value: V) -> StringLiteral {
         StringLiteral { language: Some("en".into()), value: value.into() }
