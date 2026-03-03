@@ -11,22 +11,8 @@ pub mod statics;
 
 /// A `Namespace` is a mapping between a `prefix` and an `iri`.
 /// 
-/// Following [Turtle](https://www.w3.org/TR/2014/REC-turtle-20140225/#sec-escapes) 
-/// and [TriG](https://www.w3.org/TR/trig/#sec-escapes) formatting rules, this 
-/// crate does not escape iris with "%-encoding", but does accept "%-encoded" 
-/// iris. Using W3C's example, both `http://a.example/foo-bar` and 
-/// `http://a.example/%66oo-bar` are accepted, but they are not equivalent.
-/// 
-/// Similarly invalid, unescaped, characters within a URL (e.g., a space not in 
-/// the format `%20`) will not be accepted and will return an error on 
-/// attempting to create a new `Namespace` (as will `Iri` node endpoints). This 
-/// is to ensure users of this crate take charge of what is encoded and what is 
-/// not.
-/// 
-/// When `Namespace`s are stored, they are interned to prevent excessive 
-/// duplication of long strings. This crate only implements prefixes for output, 
-/// so any endpoints added to an interned `Namespace` are simply appended to the 
-/// iri.
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug)]
 pub struct Namespace {
     prefix: Cow<'static, str>,
@@ -36,8 +22,8 @@ pub struct Namespace {
 impl Namespace {
     /// Create a new [`Namespace`].
     /// 
-    /// Prefer [`Namespace::new_const`] when declaring a `Namespace` with only 
-    /// `static` prefix and iri values.
+    /// Returns a `RdfTrigError::InvalidIri` if the `iri` cannot be parsed as a 
+    /// url.
     pub fn new<P, I>(prefix: P, iri: I) -> Namespace
     where
         P: Into<Cow<'static, str>>,
@@ -50,7 +36,12 @@ impl Namespace {
     }
 
     /// Create a new [`Namespace`] from &'static str parts.
-    pub const fn new_const(prefix: &'static str, iri: &'static str) -> Namespace {
+    /// 
+    /// This is a private function as it does not perform validation on the 
+    /// `iri`.
+    pub(crate) const fn new_const(
+        prefix: &'static str, iri: &'static str
+    ) -> Namespace {
         Namespace {
             prefix: Cow::Borrowed(prefix),
             iri: Cow::Borrowed(iri)

@@ -15,6 +15,12 @@ use raw::{BlankNode, IriNode, LiteralNode, InternedNode};
 
 /// A `Subject` is an enumerator over the two valid RDF "node" types for 
 /// subjects; blank nodes, and IRI nodes.
+/// 
+/// As with [`Graph`](crate::graphs::Graph)s, a `Subject::Iri` is a combination 
+/// of a [`Namespace`] and an `endpoint`.
+/// 
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug)]
 pub enum Subject {
     Blank(BlankNode),
@@ -38,6 +44,8 @@ impl Subject {
     
     /// Create a new `Subject::Iri` node, simultaneously declaring a new 
     /// [`Namespace`] from `prefix` and `iri` [str] values.
+    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
+    /// is invalid.
     pub fn iri_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
     ) -> Subject
@@ -53,6 +61,12 @@ impl Subject {
 
 /// A `Predicate` is simply a wrapper around an [`IriNode`], as this is the only 
 /// valid RDF resource type for a predicate.
+/// 
+/// As with [`Graph`](crate::graphs::Graph)s, a `Predicate` is a combination 
+/// of a [`Namespace`] and an `endpoint`.
+/// 
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug)]
 pub struct Predicate {
     iri: IriNode
@@ -71,6 +85,9 @@ impl Predicate {
 
     /// Create a new `Predicate` and simultaneously build a new [`Namespace`] 
     /// from provided `prefix` and `iri` [str]s.
+    /// 
+    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
+    /// is invalid.
     pub fn new_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
     ) -> Predicate
@@ -102,6 +119,12 @@ impl Predicate {
 
 /// An `Object` provides wrappers around the three main RDF node types: blank 
 /// nodes, iri nodes and literal nodes.
+/// 
+/// As with [`Graph`](crate::graphs::Graph)s, an `Object::Iri` is a combination 
+/// of a [`Namespace`] and an `endpoint`.
+/// 
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug)]
 pub enum Object {
     Blank(BlankNode),
@@ -126,6 +149,9 @@ impl Object {
 
     /// Create a new `Object::Iri` and simultaneously create a new [`Namespace`] 
     /// from the provided `prefix` and `iri` [str]s.
+    /// 
+    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
+    /// is invalid.
     pub fn iri_with_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
     ) -> Object

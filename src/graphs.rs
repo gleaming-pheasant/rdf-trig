@@ -93,6 +93,11 @@ impl InternedGraph {
     }
 }
 
+/// As with IRI nodes underlying `Subject`s, `Predicate`s and `Object`s, this 
+/// is a combination of a [`Namespace`] and an `endpoint`.
+/// 
+/// See [`crate`] documentation for details on this crates relationship with 
+/// IRIs.
 #[derive(Debug, Hash)]
 pub struct Graph {
     namespace: Namespace,
@@ -109,6 +114,9 @@ impl Graph {
 
     /// Create a new [`Graph`], simultaneously declaring its [`Namespace`] from 
     /// a `prefix` and `iri`.
+    /// 
+    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
+    /// is invalid.
     pub fn new_with_new_namespace<P, I, E>(
         prefix: P, iri: I, endpoint: E
     ) -> Graph

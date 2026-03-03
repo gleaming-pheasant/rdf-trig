@@ -14,9 +14,7 @@ This crate will likely not be maintained.
 
 # TODO!
  - Add escape encodings to IRIs and literals,
-    - IRIs: percent encode rather than numeric (unicode \u#### encode),
- - Complete validation for IRIs,
-    - Include validating IRIs to not contain any unescaped invalid characters.
+    - IRIs: percent encode rather than numeric (unicode \u#### encode)
 
 ## Panic! Don't create too many triples!
 __Warning!__ When stored in a `DataStore`, this crate interns every element 

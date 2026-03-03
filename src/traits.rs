@@ -4,7 +4,7 @@ use crate::groups::triples::Triple;
 
 /// An implementation of [`Write`] which writes in the 
 /// [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) format.
-pub(crate) trait WriteTriG {
+pub trait WriteTriG {
     /// Write self to the provided writer in TriG format.
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()>;
 }
