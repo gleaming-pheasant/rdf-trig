@@ -1,15 +1,16 @@
 # rdf-trig
-A crate for quick formatting of RDF triples from Rust native types.
+A crate for quick formatting of RDF triples in 
+[TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) from Rust native types.
 
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
 for adding to a `DataStore`. It also provides traits for writing the `DataStore` 
-and individual elements to [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)).
+and individual elements to [TriG].
 
 The main impetus of this crate is speed. It uses types and methods explicitly 
 for reading and writing types with as little reallocation, copying and memory 
 peaking as possible.
 
-This is not a labour of love, but necessity. It will likely not be maintained.
+This crate will likely not be maintained.
 
 # TODO!
  - Add escape encodings to IRIs and literals,
@@ -27,7 +28,7 @@ an index to prevent duplication. This index is converted to a `u32` to be more
 cache friendly on 64-bit systems, but be warned, any collection which reaches 
 over the maximum `u32` size (4,294,967,295) will cause applications to panic.
 
-The crate also appends numbers to you Namespace prefixes if you've used the same 
+The crate also appends numbers to Namespace prefixes if you've used the same 
 `prefix` for two different `iri`s. The limit for "suffixed prefixes" is the 
 `u8` maximum (255). If you've messed up, and you're declaring each endpoint as 
 its own namespace with a shared prefix, this crate will panic!
@@ -57,9 +58,9 @@ This is to improve performance and decrease memory consumption when using RDF
 Despite the propaganda, RDF isn't actually "machine understandable", so 
 hardcoding namespaces and iris is very common practice (see the de-facto 
 standard [RDF4J](https://rdf4j.org/documentation/tutorials/getting-started/)). 
-So this crate even provides many `const` namespaces out of the box to assist 
-with this (aocat, dcterms, foaf, owl, rdf, rdfs, skos, etc.). If you use any of 
-these, it makes sense to stick with the `Cow`s.
+This crate even provides many `const` namespaces out of the box to assist with 
+this (dcterms, foaf, owl, rdf, rdfs, skos, etc.). If you use any of these, it 
+makes sense to stick with the `Cow`s.
 
 If, however, you are dynamically defining all - or most - nodes and their 
 namespaces, do not use this crate; the overhead of using `Cow` would be 
@@ -68,8 +69,8 @@ wasteful.
 ## Not Suitable for Broadcast
 To assist in speed, this crate implements the 
 [aHash](https://github.com/tkaitchuck/ahash) hashing algorithm. The algorithm is 
-liable to change (and may produce different hashes based on the platform) and 
-not HashDOS resistant, so do not use this crate for any distributed platforms.
+liable to change, may produce different hashes based on the platform and is not 
+HashDOS resistant, so do not use this crate for any distributed platforms.
 
 Additionally, this crate does not offer any means to index `Triple`s or `Quads`. 
 It should simply be used for casting to RDF types and writing out RDF formats.
