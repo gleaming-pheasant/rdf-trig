@@ -270,22 +270,18 @@ impl Object {
     /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is not 
     /// in an XML Schema gYear format (it must be padded with 0s to be at least 
     /// 4 digits after an optional `-` sign and can have a timezone declaration).
+    /// 
+    /// Prioritise calling [`LiteralNode::gyear_from_i32`].
     pub fn gyear_from_str<C: Into<Cow<'static, str>>>(value: C)
     -> Result<Object, RdfTrigError> {
         Ok(Object::Literal(LiteralNode::gyear(value)?))
     }
 
-    /// Create a new `Object::Literal` gYear from the given `value`.
+    /// Create a new `Object::Literal` gYear from an [`i32`].
     /// 
-    /// This function differs from [`Object::gyear_from_str`]; it will pad any 
-    /// year elements less than 4 digits in length with preceding "0"s.
-    /// 
-    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is 
-    /// otherwise not in an XML Schema gYear format (such a containing invalid 
-    /// characters).
-    pub fn gyear_from_str_padded<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::gyear_padded(value)?))
+    /// This will be stored as a valid, zero-padded gYear.
+    pub fn gyear_from_i32(value: i32) -> Object {
+        Object::Literal(LiteralNode::gyear_from_i32(value))
     }
 }
 

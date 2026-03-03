@@ -269,66 +269,22 @@ impl LiteralNode {
         }
     }
 
-
-    /// Declare a `LiteralNode::GYear` type from the provided value.
+    /// Create a new `LiteralNode::GYear` with the provided [`i32`].
     /// 
-    /// This function differs from [`LiteralNode::gyear`]; it will pad any 
-    /// year elements less than 4 digits in length with preceding "0"s.
+    /// This function pads the year by padding the `i32` with preceding zeroes.
     /// 
-    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is 
-    /// otherwise not in an XML Schema gYear format (such a containing invalid 
-    /// characters).
-    pub(crate) fn gyear_padded<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<LiteralNode, RdfTrigError> {
-        todo!()
-        // let cow_val: Cow<'static, str> = value.into();
-        // let bytes = cow_val.as_bytes();
-        // let len = bytes.len(); // Saved as used repeatedly.
+    /// Unfortunately, while it would be quicker to store the value as an `i32`, 
+    /// and write the padding on [`Write`], the requirement to accept `str` 
+    /// types to allow gYears to have timezones means that the formatting must 
+    /// happen here to match the same type.
+    pub(crate) fn gyear_from_i32(value: i32) -> LiteralNode {
+        let formatted_gyear = if value < 0 {
+            format!("-{:0>4}", value.unsigned_abs())
+        } else {
+            format!("{:0>4}", value)
+        };
 
-        // let mut signed = false;
-        // let mut cursor = 0;
-
-        // if bytes[cursor] == b'-' {
-        //     signed = true;
-        //     cursor += 1;
-        // }
-
-        // let year_start = cursor; // 0 if no sign, 1 if signed.
-
-        // let tz_point = cursor
-        
-        // // Breaks if encounters a character that isn't a digit or reaches end.
-        // while cursor < len && bytes[cursor].is_ascii_digit() {
-        //     cursor += 1;
-        // }
-
-        // if len - year_start < 4 {
-        //     // Still not long enough, so invalid.
-        //     return Err(RdfTrigError::InvalidGYear(cow_val));
-        // }
-
-        // if cursor < len {
-        //     let remaining = &bytes[cursor..];
-        //     match remaining {
-        //         // One character, "Z" means UTC.
-        //         [b'Z'] => cursor += 1,
-        //         // 6 characters in a valid format (eg. "+01:00").
-        //         [sign @ (b'+' | b'-'), h1, h2, b':', m1, m2] 
-        //             if h1.is_ascii_digit() && h2.is_ascii_digit() 
-        //             && m1.is_ascii_digit() && m2.is_ascii_digit() => {
-        //             cursor += 6;
-        //         }
-        //         _ => return Err(RdfTrigError::InvalidGYear(cow_val)),
-        //     }
-        // }
-
-        // // Check entire string has been parsed.
-        // if cursor == len {
-        //     Ok(LiteralNode::GYear(cow_val))
-        // } else {
-        //     // Too long/too many characters
-        //     Err(RdfTrigError::InvalidDateTime(cow_val))
-        // }
+        LiteralNode::GYear(Cow::Owned(formatted_gyear))
     }
 
     /// Create a new `LiteralNode::String` with the provided `language` and 
@@ -776,6 +732,16 @@ mod tests {
     }
 
     #[test]
+    fn test_valid_gyear_really_old() {
+        assert!(LiteralNode::gyear("-4206969").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_far_future() {
+        assert!(LiteralNode::gyear("696969").is_ok());
+    }
+
+    #[test]
     fn test_valid_gyear_unsigned() {
         assert!(LiteralNode::gyear("1999").is_ok());
     }
@@ -803,6 +769,32 @@ mod tests {
     #[test]
     fn test_invalid_gyear_too_short_unsigned() {
         assert!(LiteralNode::gyear("69").is_err());
+    }
+
+    #[test]
+    fn test_valid_gyear_from_i32_unsigned_write_trig() {
+        let gyear_node = LiteralNode::gyear_from_i32(69);
+
+        let mut buf = vec![];
+        gyear_node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"0069\"^^xsd:gYear")
+        );
+    }
+
+    #[test]
+    fn test_valid_gyear_from_i32_signed_write_trig() {
+        let gyear_node = LiteralNode::gyear_from_i32(-420);
+
+        let mut buf = vec![];
+        gyear_node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"-0420\"^^xsd:gYear")
+        );
     }
 
     #[test]

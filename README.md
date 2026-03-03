@@ -12,7 +12,6 @@ peaking as possible.
 This is not a labour of love, but necessity. It will likely not be maintained.
 
 # TODO!
- - Tests, tests and more tests!
  - Add escape encodings to IRIs and literals,
     - IRIs: percent encode rather than numeric (unicode \u#### encode),
         - This includes rejecting an IRIs upfront that include invalid 
@@ -29,7 +28,6 @@ This is not a labour of love, but necessity. It will likely not be maintained.
         - `\'` ('),
         - `\\` (\\)
  - Complete validation for literal types and IRIs,
-    - Expose new_...() functions to Object struct for `LiteralNode`s,
     - Include validating IRIs to not contain any unescaped invalid characters.
 
 ## Panic! Don't create too many triples!
