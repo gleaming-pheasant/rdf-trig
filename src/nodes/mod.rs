@@ -12,7 +12,6 @@ pub mod raw;
 use raw::{BlankNode, IriNode, LiteralNode, InternedNode};
 
 
-
 /// A `Subject` is an enumerator over the two valid RDF "node" types for 
 /// subjects; blank nodes, and IRI nodes.
 #[derive(Debug)]
@@ -189,7 +188,6 @@ impl Object {
     -> Result<Object, RdfTrigError> {
         Ok(Object::Literal(LiteralNode::datetime(value)?))
     }
-
     
     #[cfg(feature = "time")]
     /// Only on the `time` feature.
@@ -265,6 +263,29 @@ impl Object {
     /// Create a new `Object::Literal` decimal type from the provided [`f32`].
     pub fn decimal_from_native(value: f32) -> Object {
         Object::Literal(LiteralNode::from(value))
+    }
+
+    /// Create a new `Object::Literal` gYear type from the given `value`.
+    /// 
+    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is not 
+    /// in an XML Schema gYear format (it must be padded with 0s to be at least 
+    /// 4 digits after an optional `-` sign and can have a timezone declaration).
+    pub fn gyear_from_str<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<Object, RdfTrigError> {
+        Ok(Object::Literal(LiteralNode::gyear(value)?))
+    }
+
+    /// Create a new `Object::Literal` gYear from the given `value`.
+    /// 
+    /// This function differs from [`Object::gyear_from_str`]; it will pad any 
+    /// year elements less than 4 digits in length with preceding "0"s.
+    /// 
+    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is 
+    /// otherwise not in an XML Schema gYear format (such a containing invalid 
+    /// characters).
+    pub fn gyear_from_str_padded<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<Object, RdfTrigError> {
+        Ok(Object::Literal(LiteralNode::gyear_padded(value)?))
     }
 }
 

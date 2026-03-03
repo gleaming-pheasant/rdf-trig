@@ -240,7 +240,7 @@ impl LiteralNode {
             cursor += 1;
         }
 
-        if cursor - year_start < 4 {
+        if len - year_start < 4 {
             // Still not long enough, so invalid.
             return Err(RdfTrigError::InvalidGYear(cow_val));
         }
@@ -267,6 +267,68 @@ impl LiteralNode {
             // Too long/too many characters
             Err(RdfTrigError::InvalidDateTime(cow_val))
         }
+    }
+
+
+    /// Declare a `LiteralNode::GYear` type from the provided value.
+    /// 
+    /// This function differs from [`LiteralNode::gyear`]; it will pad any 
+    /// year elements less than 4 digits in length with preceding "0"s.
+    /// 
+    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is 
+    /// otherwise not in an XML Schema gYear format (such a containing invalid 
+    /// characters).
+    pub(crate) fn gyear_padded<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfTrigError> {
+        todo!()
+        // let cow_val: Cow<'static, str> = value.into();
+        // let bytes = cow_val.as_bytes();
+        // let len = bytes.len(); // Saved as used repeatedly.
+
+        // let mut signed = false;
+        // let mut cursor = 0;
+
+        // if bytes[cursor] == b'-' {
+        //     signed = true;
+        //     cursor += 1;
+        // }
+
+        // let year_start = cursor; // 0 if no sign, 1 if signed.
+
+        // let tz_point = cursor
+        
+        // // Breaks if encounters a character that isn't a digit or reaches end.
+        // while cursor < len && bytes[cursor].is_ascii_digit() {
+        //     cursor += 1;
+        // }
+
+        // if len - year_start < 4 {
+        //     // Still not long enough, so invalid.
+        //     return Err(RdfTrigError::InvalidGYear(cow_val));
+        // }
+
+        // if cursor < len {
+        //     let remaining = &bytes[cursor..];
+        //     match remaining {
+        //         // One character, "Z" means UTC.
+        //         [b'Z'] => cursor += 1,
+        //         // 6 characters in a valid format (eg. "+01:00").
+        //         [sign @ (b'+' | b'-'), h1, h2, b':', m1, m2] 
+        //             if h1.is_ascii_digit() && h2.is_ascii_digit() 
+        //             && m1.is_ascii_digit() && m2.is_ascii_digit() => {
+        //             cursor += 6;
+        //         }
+        //         _ => return Err(RdfTrigError::InvalidGYear(cow_val)),
+        //     }
+        // }
+
+        // // Check entire string has been parsed.
+        // if cursor == len {
+        //     Ok(LiteralNode::GYear(cow_val))
+        // } else {
+        //     // Too long/too many characters
+        //     Err(RdfTrigError::InvalidDateTime(cow_val))
+        // }
     }
 
     /// Create a new `LiteralNode::String` with the provided `language` and 
@@ -736,6 +798,11 @@ mod tests {
     #[test]
     fn test_invalid_gyear_too_short() {
         assert!(LiteralNode::gyear("-420").is_err());
+    }
+
+    #[test]
+    fn test_invalid_gyear_too_short_unsigned() {
+        assert!(LiteralNode::gyear("69").is_err());
     }
 
     #[test]
