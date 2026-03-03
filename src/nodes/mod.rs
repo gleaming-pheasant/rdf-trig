@@ -218,7 +218,7 @@ impl Object {
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_naive(value: chrono::NaiveDateTime)
     -> Object {
-        Ok(Object::Literal(LiteralNode::from(value)?))
+        Object::Literal(LiteralNode::from(value))
     }
 
     #[cfg(feature = "chrono")]
@@ -228,7 +228,7 @@ impl Object {
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_utc(value: chrono::DateTime<chrono::Utc>)
     -> Object {
-        Ok(Object::Literal(LiteralNode::from(value)?))
+        Object::Literal(LiteralNode::from(value))
     }
 
     #[cfg(feature = "chrono")]
@@ -238,7 +238,7 @@ impl Object {
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_local(value: chrono::DateTime<chrono::Local>)
     -> Object {
-        Ok(Object::Literal(LiteralNode::from(value)?))
+        Object::Literal(LiteralNode::from(value))
     }
 
     #[cfg(feature = "chrono")]
@@ -248,7 +248,7 @@ impl Object {
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_offset(value: chrono::DateTime<chrono::FixedOffset>)
     -> Object {
-        Ok(Object::Literal(LiteralNode::from(value)?))
+        Object::Literal(LiteralNode::from(value))
     }
 
     /// Create a new `Object::Literal` decimal type from the given `value`.
