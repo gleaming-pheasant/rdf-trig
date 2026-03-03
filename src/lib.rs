@@ -99,6 +99,8 @@
 //! Therefore, the only percent-encoding that this crate does, is non-printable 
 //! ASCII (00-1F and 7F), unsafe characters and non-ASCII characters.
 //! 
+//! No validation on the layout of the URL is performed at all.
+//! 
 //! ## __Warning__
 //! When stored in a [`DataStore`], this crate interns every element that makes 
 //! up its structure; [`Graph`]s, [`Triple`]s, [`Quad`]s and [`nodes`]. It 

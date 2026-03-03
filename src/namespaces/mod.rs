@@ -5,7 +5,7 @@ use std::ops::Deref;
 
 use crate::FastIndexSet;
 use crate::traits::WriteTriG;
-use crate::utils::write_escaped_local_name;
+use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 pub mod statics;
 
@@ -215,7 +215,7 @@ impl WriteTriG for NamespaceStore {
             writer.write_all(b"@prefix ")?;
             write_escaped_local_name(writer, ns.prefix())?;
             writer.write_all(b": <")?;
-            writer.write_all(ns.iri().as_bytes())?;
+            write_escaped_url_component(writer, ns.iri())?;
             writer.write_all(b"> .\n")?;
         }
 

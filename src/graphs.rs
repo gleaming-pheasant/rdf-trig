@@ -6,7 +6,7 @@ use crate::FastIndexSet;
 use crate::groups::triples::TripleView;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
-use crate::utils::write_escaped_local_name;
+use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// A wrapper around an [`IndexSet<InternedGraph>`] which acts as a fast store 
 /// for unique [`Graph`] values.
@@ -241,7 +241,7 @@ impl<'a> WriteTriG for FullGraphView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         write_escaped_local_name(writer, self.graph.namespace().prefix())?;
         writer.write_all(b":")?;
-        writer.write_all(self.graph.endpoint().as_bytes())?;
+        write_escaped_url_component(writer, self.graph.endpoint())?;
         writer.write_all(b" { ")?;
 
         for triple in &self.triples {
