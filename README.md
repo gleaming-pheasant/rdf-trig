@@ -12,10 +12,6 @@ peaking as possible.
 
 This crate will likely not be maintained.
 
-# TODO!
- - Add escape encodings to IRIs and literals,
-    - IRIs: percent encode rather than numeric (unicode \u#### encode)
-
 ## Panic! Don't create too many triples!
 __Warning!__ When stored in a `DataStore`, this crate interns every element 
 that makes up its structure; `Namespace`s, `Graph`s, `Triple`s, `Quad`s and 
