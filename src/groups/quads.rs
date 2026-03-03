@@ -6,6 +6,7 @@ use crate::graphs::{GraphId, GraphView};
 use crate::groups::triples::{Triple, TripleView};
 use crate::nodes::NodeId;
 use crate::traits::WriteTriG;
+use crate::utils::write_trig_escaped_local_name;
 
 /// A [`Quad`] is a [`Triple`] with an optional [`GraphId`] to assign it to a 
 /// [`Graph`] that has been registered with a 
@@ -142,7 +143,7 @@ pub(crate) struct QuadView<'a> {
 
 impl<'a> WriteTriG for QuadView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        writer.write_all(self.graph.namespace().prefix().as_bytes())?;
+        write_trig_escaped_local_name(writer, self.graph.namespace().prefix())?;
         writer.write_all(b":")?;
         writer.write_all(self.graph.endpoint().as_bytes())?;
         writer.write_all(b" { ")?;

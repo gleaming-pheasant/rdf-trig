@@ -7,6 +7,7 @@ pub enum RdfTrigError {
     InvalidDateTime(Cow<'static, str>),
     InvalidDecimal(Cow<'static, str>),
     InvalidGYear(Cow<'static, str>),
+    InvalidIri(Cow<'static, str>),
     InvalidLanguage(Cow<'static, str>)
 }
 
@@ -24,6 +25,9 @@ impl std::fmt::Display for RdfTrigError {
             },
             RdfTrigError::InvalidGYear(gy) => {
                 write!(f, "{} is an invalid gYear", gy)
+            },
+            RdfTrigError::InvalidIri(lang) => {
+                write!(f, "{} is an IRI component", lang)
             },
             RdfTrigError::InvalidLanguage(lang) => {
                 write!(f, "{} is an invalid language code", lang)

@@ -11,6 +11,7 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use crate::errors::RdfTrigError;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
+use crate::utils::write_trig_escaped_local_name;
 
 /// These `const`s allow compile-time format descriptions for validating 
 /// [`time::PrimitiveDateTime`]s. ISO-3339 formats are tested first, but these 
@@ -119,7 +120,9 @@ impl BlankNode {
 impl WriteTriG for BlankNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         writer.write_all(b"_:")?;
-        writer.write_all(self.0.as_bytes())
+        write_trig_escaped_local_name(writer, &self.0)?;
+
+        Ok(())
     }
 }
 
@@ -857,5 +860,31 @@ mod tests {
             String::from_utf8(buf).unwrap(),
             String::from("\"My Literal\"@eng")
         );
+    }
+
+    #[test]
+    fn test_blank_node_write_trig() {
+        let blank = BlankNode::new("myprefix");
+
+        let mut buf = vec![];
+        blank.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("_:myprefix")
+        )
+    }
+
+    #[test]
+    fn test_blank_node_write_trig_w_escape_char() {
+        let blank = BlankNode::new("my_prefix");
+
+        let mut buf = vec![];
+        blank.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("_:my\\_prefix")
+        )
     }
 }

@@ -21,6 +21,7 @@ mod namespaces;
 pub mod nodes;
 mod store;
 pub(crate) mod traits;
+pub(crate) mod utils;
 
 pub use graphs::Graph;
 pub use groups::{Quad, Triple};
