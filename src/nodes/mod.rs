@@ -6,7 +6,7 @@ use crate::FastIndexSet;
 use crate::errors::RdfTrigError;
 use crate::namespaces::Namespace;
 use crate::traits::WriteTriG;
-use crate::utils::write_trig_escaped_local_name;
+use crate::utils::write_escaped_local_name;
 
 pub mod raw;
 
@@ -352,7 +352,7 @@ impl<'a> IriNodeView<'a> {
 
 impl<'a> WriteTriG for IriNodeView<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        write_trig_escaped_local_name(writer, self.namespace.prefix())?;
+        write_escaped_local_name(writer, self.namespace.prefix())?;
         writer.write_all(b":")?;
         writer.write_all(self.endpoint.as_bytes())?;
         Ok(())

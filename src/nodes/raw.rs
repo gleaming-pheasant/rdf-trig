@@ -11,7 +11,7 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use crate::errors::RdfTrigError;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
-use crate::utils::write_trig_escaped_local_name;
+use crate::utils::{write_escaped_literal, write_escaped_local_name};
 
 /// These `const`s allow compile-time format descriptions for validating 
 /// [`time::PrimitiveDateTime`]s. ISO-3339 formats are tested first, but these 
@@ -120,7 +120,7 @@ impl BlankNode {
 impl WriteTriG for BlankNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         writer.write_all(b"_:")?;
-        write_trig_escaped_local_name(writer, &self.0)?;
+        write_escaped_local_name(writer, &self.0)?;
 
         Ok(())
     }
@@ -446,7 +446,10 @@ impl WriteTriG for LiteralNode {
                         )?;},
                     None => {
                         writer.write_all(b"\"")?;
-                        writer.write_all(st.value().as_bytes())?;
+                        // Only String literal needs to escape these characters, 
+                        // have already verified every other character in every 
+                        // other type (as well as for `language` for string).
+                        write_escaped_literal(writer, st.value())?;
                         writer.write_all(b"\"")?;
                     }
                 }
@@ -859,6 +862,21 @@ mod tests {
         assert_eq!(
             String::from_utf8(buf).unwrap(),
             String::from("\"My Literal\"@eng")
+        );
+    }
+
+    #[test]
+    fn test_custom_language_string_write_trig_with_escape() {
+        let node = LiteralNode::string(
+            Some("uk"), "My\r\nLiteral"
+        ).unwrap();
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My\r\nLiteral\"@uk")
         );
     }
 

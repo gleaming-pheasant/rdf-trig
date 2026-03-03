@@ -14,15 +14,6 @@ This is not a labour of love, but necessity. It will likely not be maintained.
 # TODO!
  - Add escape encodings to IRIs and literals,
     - IRIs: percent encode rather than numeric (unicode \u#### encode),
-    - Literals, string escape the basics:
-        - `\t` (tab),
-        - `\b` (backspace),
-        - `\n` (newline),
-        - `\r` (carriage return),
-        - `\f` (form feed),
-        - `\"` ("),
-        - `\'` ('),
-        - `\\` (\\)
  - Complete validation for IRIs,
     - Include validating IRIs to not contain any unescaped invalid characters.
 

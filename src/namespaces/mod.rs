@@ -5,7 +5,7 @@ use std::ops::Deref;
 
 use crate::FastIndexSet;
 use crate::traits::WriteTriG;
-use crate::utils::write_trig_escaped_local_name;
+use crate::utils::write_escaped_local_name;
 
 pub mod statics;
 
@@ -222,7 +222,7 @@ impl WriteTriG for NamespaceStore {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         for ns in &self.store {
             writer.write_all(b"@prefix ")?;
-            write_trig_escaped_local_name(writer, ns.prefix())?;
+            write_escaped_local_name(writer, ns.prefix())?;
             writer.write_all(b": <")?;
             writer.write_all(ns.iri().as_bytes())?;
             writer.write_all(b"> .\n")?;
