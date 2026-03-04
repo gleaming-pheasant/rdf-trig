@@ -85,7 +85,7 @@
 //! no types are rejected on input. A local name can be passed to this crate 
 //! with whitespace, or characters in need of escaping, etc.
 //! 
-//! Rather than rejecting these inputs and creating a bottlneck, the crate 
+//! Rather than rejecting these inputs and creating a bottleneck, the crate 
 //! simply escapes - and in some cases refuses to print - characters on writing 
 //! the TriG output. For instance, a local name (such as a prefix) declared with 
 //! a line break (\r\n or \n), will be accepted, but the line break will simply 
