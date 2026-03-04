@@ -168,8 +168,6 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
-    use std::path::Prefix;
-
     use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, FOAF, OWL, RDF};
     use crate::nodes::{Object, Predicate, Subject};
     use crate::traits::WriteTriG;
