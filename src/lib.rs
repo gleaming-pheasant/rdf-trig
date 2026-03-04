@@ -79,14 +79,39 @@
 //! ));
 //! 
 //! ```
+//! ## A Note on Accepted Values
+//! ### *All Escaped Values*
+//! For the purposes of speed (and given this crate's limited functionality), 
+//! no types are rejected on input. A local name can be passed to this crate 
+//! with whitespace, or characters in need of escaping, etc.
 //! 
-//! ## A Note on *IRI*s
+//! Rather than rejecting these inputs and creating a bottlneck, the crate 
+//! simply escapes - and in some cases refuses to print - characters on writing 
+//! the TriG output. For instance, a local name (such as a prefix) declared with 
+//! a line break (\r\n or \n), will be accepted, but the line break will simply 
+//! be removed on the output.
+//! 
+//! __The escape sequences are also not completely valid!__ The crate doesn't 
+//! exclude some of the random characters that the TriG specification excludes, 
+//! such as this weird exclusion of the multiplication sign:
+//! 
+//!  > [#0370-#037D] | [#037F-#1FFF]
+//! 
+//! Instead, the crate hopes to not encounter them, trusts that users will 
+//! exclude them manually, or that users graph databases will tolerate the 
+//! invalid characters.
+//! 
+//! Again, this is to improve speed; parsing single bytes rather than verifying 
+//! unicode characters.
+//! 
+//! ### *IRIs*
 //! This crate - as with most implementations of RDF - has an awkward 
 //! relationship with IRIs.
 //! 
 //! To a certain degree, it has to trust that param separators, path separators, 
 //! etc. are where they should. Using an example from the 
 //! [TriG specification](https://www.w3.org/TR/trig/#sec-escapes) to explain: 
+//! 
 //! > %-encoded sequences are in the character range for IRIs and are explicitly 
 //! > allowed in local names. These appear as a '%' followed by two hex 
 //! > characters and represent that same sequence of three characters. These 
@@ -96,10 +121,12 @@
 //! > written as ex:%66oo-bar with a prefix @prefix ex: <http://a.example/> also 
 //! > designates the IRI http://a.example/%66oo-bar.
 //! 
-//! Therefore, the only percent-encoding that this crate does, is non-printable 
-//! ASCII (00-1F and 7F), unsafe characters and non-ASCII characters.
-//! 
-//! No validation on the layout of the URL is performed at all.
+//! Therefore, the only verification that this crate does is on namespace IRIs 
+//! (the base IRI, and not any endpoints). Once those are verified, any appended 
+//! endpoints are simply trusted to be in a valid format. This crate makes no 
+//! assumptions about what needs escaping, and instead only escapes characters 
+//! that would otherwise make an endpoint completely invalid (such as spaces, 
+//! '<', '{', '|', etc.).
 //! 
 //! ## __Warning__
 //! When stored in a [`DataStore`], this crate interns every element that makes 
@@ -141,7 +168,9 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 #[cfg(test)]
 mod tests {
-    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS};
+    use std::path::Prefix;
+
+    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, FOAF, OWL, RDF};
     use crate::nodes::{Object, Predicate, Subject};
     use crate::traits::WriteTriG;
 
@@ -204,5 +233,92 @@ mod tests {
         assert!(as_str.contains("ariadneplus:MyGraph {"));
         assert!(as_str.contains("ariadneplus:69 aocat:has_property"));
         assert!(as_str.contains("\"Is inappropriate\"@en"));
+    }
+
+    #[test]
+    fn test_add_triple_to_quad_with_escape_chars() {
+        let mut ds = DataStore::new();
+        
+        let my_graph = Graph::new(ARIADNEPLUS, "My\tEscaped Graph");
+        let graph_id = ds.add_graph(my_graph);
+
+        let triple = Triple::new(
+            Subject::iri(OWL, "Owl\nEscaped Class"),
+            Predicate::new(RDF, "has._type"),
+            Object::string_no_lang("awkward\r\nliteral")
+        );
+
+        ds.add_triple_to_graph(graph_id, triple);
+
+        let mut buf: Vec<u8> = Vec::new();
+        ds.write_trig(&mut buf).unwrap();
+
+        let as_str = String::from_utf8(buf).unwrap();
+
+        assert!(as_str.contains("@prefix owl: <http://www.w3.org/2002/07/owl#> ."));
+        assert!(as_str.contains("@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ."));
+        assert!(as_str.contains(r"ariadneplus:My%09Escaped%20Graph {"));
+        assert!(as_str.contains(r"owl:Owl%0AEscaped%20Class rdf:has._type"));
+        assert!(as_str.contains(r"awkward\r\nliteral"));
+    }
+
+    #[test]
+    fn test_add_triple_with_non_string_literal() {
+        let mut ds = DataStore::new();
+        
+        let my_graph = Graph::new(ARIADNEPLUS, "My\rEscaped Graph");
+        let graph_id = ds.add_graph(my_graph);
+
+        let triple = Triple::new(
+            Subject::iri(OWL, "Class"),
+            Predicate::new(RDF, "has type"),
+            Object::gyear_from_i32(-420)
+        );
+        
+        ds.add_triple_to_graph(graph_id, triple);
+
+        let mut buf: Vec<u8> = Vec::new();
+        ds.write_trig(&mut buf).unwrap();
+
+        let as_str = String::from_utf8(buf).unwrap();
+
+        assert!(as_str.contains("@prefix owl: <http://www.w3.org/2002/07/owl#> ."));
+        assert!(as_str.contains("@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> ."));
+        assert!(as_str.contains("ariadneplus:My%0DEscaped%20Graph {"));
+        assert!(as_str.contains("owl:Class rdf:has%20type \"-0420\"^^xsd:gYear"));
+    }
+
+    #[test]
+    fn test_escaped_prefix() {
+        let mut ds = DataStore::new();
+
+        let triple = Triple::new(
+            Subject::iri_with_new_namespace(
+                "odd~ prefix", 
+                "https://www.w3.org/TR/rdf12-schema/#",
+                "my_endpoint"
+            ).unwrap(),
+            Predicate::new(FOAF, "is_friends_with"),
+            Object::blank("blank_id")
+        );
+
+        ds.add_triple(triple);
+
+        let mut buf = vec![];
+        ds.write_trig(&mut buf).unwrap();
+
+        let as_str = String::from_utf8(buf).unwrap();
+
+        println!("{as_str}");
+
+        assert!(as_str.contains(
+            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+        ));
+        assert!(as_str.contains(
+            "@prefix odd\\~prefix: <https://www.w3.org/TR/rdf12-schema/#> .\n"
+        ));
+        assert!(as_str.contains(
+            r"odd\~prefix:my_endpoint foaf:is_friends_with _:blank_id ."
+        ));
     }
 }

@@ -48,13 +48,15 @@ impl Subject {
     /// is invalid.
     pub fn iri_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Subject
+    ) -> Result<Subject, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>,
         C: Into<Cow<'static, str>>
     {
-        Subject::Iri(IriNode::new_with_new_namespace(prefix, iri, endpoint))
+        Ok(Subject::Iri(
+            IriNode::new_with_new_namespace(prefix, iri, endpoint)?
+        ))
     }
 }
 
@@ -90,15 +92,15 @@ impl Predicate {
     /// is invalid.
     pub fn new_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Predicate
+    ) -> Result<Predicate, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>,
         C: Into<Cow<'static, str>>
     {
-        Predicate {
-            iri: IriNode::new_with_new_namespace(prefix, iri, endpoint)
-        }
+        Ok(Predicate {
+            iri: IriNode::new_with_new_namespace(prefix, iri, endpoint)?
+        })
     }
 
     /// Consume this `Predicate`, returning the contained [`Namespace`] and 
@@ -154,13 +156,15 @@ impl Object {
     /// is invalid.
     pub fn iri_with_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Object
+    ) -> Result<Object, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>,
         C: Into<Cow<'static, str>>
     {
-        Object::Iri(IriNode::new_with_new_namespace(prefix, iri, endpoint))
+        Ok(Object::Iri(
+            IriNode::new_with_new_namespace(prefix, iri, endpoint)?
+        ))
     }
 
     /// Create a new `Object::Literal` string type with the provided `language` 
@@ -405,5 +409,19 @@ impl<'a> WriteTriG for NodeView<'a> {
             NodeView::Iri(iri) => iri.write_trig(writer),
             NodeView::Literal(literal) => literal.write_trig(writer)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Subject;
+
+    #[test]
+    fn test_add_invalid_namespace() {
+        let subject = Subject::iri_with_new_namespace(
+            "badOwl", "can't find owl schema", "Class"
+        );
+
+        assert!(subject.is_err());
     }
 }

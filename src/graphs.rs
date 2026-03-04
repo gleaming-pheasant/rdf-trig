@@ -3,6 +3,7 @@ use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 
 use crate::FastIndexSet;
+use crate::errors::RdfTrigError;
 use crate::groups::triples::TripleView;
 use crate::namespaces::{Namespace, NamespaceId};
 use crate::traits::WriteTriG;
@@ -119,16 +120,16 @@ impl Graph {
     /// is invalid.
     pub fn new_with_new_namespace<P, I, E>(
         prefix: P, iri: I, endpoint: E
-    ) -> Graph
+    ) -> Result<Graph, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>,
         E: Into<Cow<'static, str>>
     {
-        Graph {
-            namespace: Namespace::new(prefix, iri),
+        Ok(Graph {
+            namespace: Namespace::new(prefix, iri)?,
             endpoint: endpoint.into()
-        }
+        })
     }
 
     /// Return a ([`Namespace`], [`Cow<'static, str>`]) tuple containing this 

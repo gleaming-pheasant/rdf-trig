@@ -44,18 +44,22 @@ impl IriNode {
         IriNode { namespace, endpoint: endpoint.into() }
     }
 
+    /// Create a new `IriNode`, assigning a new [`Namespace`] simultaneously.
+    /// 
+    /// Returns a `RdfTrigError::InvalidIri` if the `iri` cannot be parsed as a 
+    /// URL.
     pub(crate) fn new_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> IriNode
+    ) -> Result<IriNode, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>,
         C: Into<Cow<'static, str>>
     {
-        IriNode {
-            namespace: Namespace::new(prefix, iri),
+        Ok(IriNode {
+            namespace: Namespace::new(prefix, iri)?,
             endpoint: endpoint.into()
-        }
+        })
     }
 
     /// Allows you to create a new `IriNode` which is composed of static values 
@@ -885,14 +889,14 @@ mod tests {
 
     #[test]
     fn test_blank_node_write_trig_w_escape_char() {
-        let blank = BlankNode::new("my_prefix");
+        let blank = BlankNode::new("my_pre~fix\n");
 
         let mut buf = vec![];
         blank.write_trig(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
-            String::from("_:my\\_prefix")
+            String::from(r"_:my_pre\~fix")
         )
     }
 }

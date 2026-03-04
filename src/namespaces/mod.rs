@@ -3,7 +3,10 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::ops::Deref;
 
+use url::Url;
+
 use crate::FastIndexSet;
+use crate::errors::RdfTrigError;
 use crate::traits::WriteTriG;
 use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
@@ -24,15 +27,22 @@ impl Namespace {
     /// 
     /// Returns a `RdfTrigError::InvalidIri` if the `iri` cannot be parsed as a 
     /// url.
-    pub fn new<P, I>(prefix: P, iri: I) -> Namespace
+    pub fn new<P, I>(prefix: P, iri: I) -> Result<Namespace, RdfTrigError>
     where
         P: Into<Cow<'static, str>>,
         I: Into<Cow<'static, str>>
     {
-        Namespace {
-            prefix: prefix.into(),
-            iri: iri.into()
+        let iri = iri.into();
+        
+        // Guard clause to prevent invalid IRIs.
+        if Url::parse(&iri).is_err() {
+            return Err(RdfTrigError::InvalidIri(iri));
         }
+
+        Ok(Namespace {
+            prefix: prefix.into(),
+            iri
+        })
     }
 
     /// Create a new [`Namespace`] from &'static str parts.
@@ -234,22 +244,22 @@ mod tests {
         let mut store = NamespaceStore::new();
 
         let ns_one= store.intern_namespace(
-            Namespace::new("test", "http://example1.com")
+            Namespace::new("test", "http://example1.com").unwrap()
         );
 
         // Same prefix, different iri, should append to the prefix.
         let ns_two = store.intern_namespace(
-            Namespace::new("test", "http://example2.com")
+            Namespace::new("test", "http://example2.com").unwrap()
         );
 
         // Same prefix, different iri again.
         let ns_three = store.intern_namespace(
-            Namespace::new("test", "http://example3.com")
+            Namespace::new("test", "http://example3.com").unwrap()
         );
 
         // Exactly the same as ns_two.
         let ns_four = store.intern_namespace(
-            Namespace::new("test", "http://example2.com")
+            Namespace::new("test", "http://example2.com").unwrap()
         );
 
         assert!(
@@ -275,11 +285,11 @@ mod tests {
         let mut store = NamespaceStore::new();
 
         let ns_one = store.intern_namespace(
-            Namespace::new("one", "http://examples.com/")
+            Namespace::new("one", "http://examples.com/").unwrap()
         );
 
         let ns_two = store.intern_namespace(
-            Namespace::new("two", "http://examples.com/")
+            Namespace::new("two", "http://examples.com/").unwrap()
         );
 
         assert_eq!(
