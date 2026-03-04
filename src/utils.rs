@@ -54,17 +54,6 @@ pub(crate) fn write_escaped_literal<W: Write>(
     Ok(())
 }
 
-const LOCAL_ESCAPE_LU: [bool; 256] = {
-    let mut table = [false; 256];
-    let targets = b"~.-!$&'()*+,;=/?#@%_";
-    let mut i = 0;
-    while i < targets.len() {
-        table[targets[i] as usize] = true;
-        i += 1;
-    }
-    table
-};
-
 /// This takes an impl [`Write`] and a [`str`] slice and escapes any characters 
 /// that cannot be stored as local names (blank nodes, prefixes) in the TriG 
 /// format. It writes the escape sequence of each character as it does so, to 
@@ -74,24 +63,31 @@ const LOCAL_ESCAPE_LU: [bool; 256] = {
 pub(crate) fn write_escaped_local_name<W: Write>(
     writer: &mut W, input: &str
 ) -> IoResult<()> {
-    let bytes = input.as_bytes();
-    let mut last_idx = 0;
+let bytes = input.as_bytes();
 
-    for (i, &byte) in bytes.iter().enumerate() {
-        if LOCAL_ESCAPE_LU[byte as usize] {
-            if i > last_idx {
-                writer.write_all(&bytes[last_idx..i])?;
+    for &b in bytes {
+        match b {
+            // Valid ASCII alpha_numeric to write directly.
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'_' | b'-' => {
+                writer.write_all(&[b])?;
             }
-            
-            writer.write_all(&[b'\\', byte])?;
-            last_idx = i + 1;
+
+            // List of TriG reserved characters to be escaped with a `\`
+            b'~' | b'.' | b'!' | b'$' | b'&' | b'\'' | b'(' | b')' | b'*' | 
+            b'+' | b',' | b';' | b'=' | b'/' | b'?' | b'#' | b'@' | b'%' => {
+                writer.write_all(&[b'\\', b])?;
+            }
+
+            // Multi-byte UTF-8 characters (all have high bit of 1, so will be 
+            // over 127).
+            b if b > 127 => {
+                writer.write_all(&[b])?;
+            }
+
+            // Anything else is not accepted at all.
+            _ => {}
         }
     }
-
-    if last_idx < bytes.len() {
-        writer.write_all(&bytes[last_idx..])?;
-    }
-
     Ok(())
 }
 
@@ -101,7 +97,7 @@ const URL_NEEDS_ESCAPE: [bool; 256] = {
     let mut table = [false; 256];
     let mut i = 0;
     while i < 256 { // Non-printable.
-        if i <= 0x1F || i == 0x7F {
+        if i <= 0x1F || i == 0x7F || i == 0x20 {
             table[i] = true;
         }
         if i >= 0x80 { // Non-ASCII
