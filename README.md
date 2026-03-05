@@ -30,7 +30,7 @@ as this weird exclusion of the multiplication sign:
  > [#0370-#037D] | [#037F-#1FFF]
 
 Instead, the crate hopes to not encounter them, trusts that users will exclude 
-them manually, or that users graph databases will tolerate the invalid 
+them manually, or that users' graph databases will tolerate the invalid 
 characters.
 
 Again, this is to improve speed; parsing single bytes rather than verifying 
