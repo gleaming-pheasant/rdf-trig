@@ -36,7 +36,7 @@ pub const FOAF: Namespace = Namespace::new_const(
 );
 
 pub const LEXVO: Namespace = Namespace::new_const(
-    "lexvo", "http://lexvo.org/ontology/"
+    "lexvo", "http://lexvo.org/ontology#"
 );
 
 pub const OWL: Namespace = Namespace::new_const(
