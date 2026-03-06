@@ -3,6 +3,8 @@
 //! 
 //! Use the `const` function [`Namespace::new_const`] to create `const` 
 //! `Namespace`s for use in your own applications.
+use crate::nodes::Predicate;
+
 use super::Namespace;
 
 /// The [AO-Cat](https://doi.org/10.5281/zenodo.7818375) ontology.
@@ -46,6 +48,8 @@ pub const OWL: Namespace = Namespace::new_const(
 pub const RDF: Namespace = Namespace::new_const(
     "rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 );
+
+pub const RDF_TYPE: Predicate = Predicate::new_const(RDF, "type");
 
 pub const RDFS: Namespace = Namespace::new_const(
     "rdfs", "http://www.w3.org/2000/01/rdf-schema#"

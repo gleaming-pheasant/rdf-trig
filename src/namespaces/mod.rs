@@ -10,6 +10,7 @@ use crate::errors::RdfTrigError;
 use crate::traits::WriteTriG;
 use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
+pub mod predicates;
 pub mod statics;
 
 /// A `Namespace` is a mapping between a `prefix` and an `iri`.
