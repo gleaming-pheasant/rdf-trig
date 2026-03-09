@@ -18,20 +18,20 @@ pub mod statics;
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug)]
-pub struct Namespace {
-    prefix: Cow<'static, str>,
-    iri: Cow<'static, str>
+pub struct Namespace<'a> {
+    prefix: Cow<'a, str>,
+    iri: Cow<'a, str>
 }
 
-impl Namespace {
+impl<'a> Namespace<'a> {
     /// Create a new [`Namespace`].
     /// 
     /// Returns a `RdfTrigError::InvalidIri` if the `iri` cannot be parsed as a 
     /// url.
-    pub fn new<P, I>(prefix: P, iri: I) -> Result<Namespace, RdfTrigError>
+    pub fn new<P, I>(prefix: P, iri: I) -> Result<Namespace<'a>, RdfTrigError<'a>>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>
     {
         let iri = iri.into();
         
@@ -52,7 +52,7 @@ impl Namespace {
     /// `iri`.
     pub(crate) const fn new_const(
         prefix: &'static str, iri: &'static str
-    ) -> Namespace {
+    ) -> Namespace<'a> {
         Namespace {
             prefix: Cow::Borrowed(prefix),
             iri: Cow::Borrowed(iri)
@@ -61,7 +61,7 @@ impl Namespace {
 
     /// Return a `(Cow<'static, str>, Cow<'static, str>)` containing this 
     /// `Namespace`'s `prefix` and `iri`.
-    pub fn into_parts(self) -> (Cow<'static, str>, Cow<'static, str>) {
+    pub fn into_parts(self) -> (Cow<'a, str>, Cow<'a, str>) {
         (self.prefix, self.iri)
     }
 
@@ -79,18 +79,18 @@ impl Namespace {
     /// 
     /// This should be used internally only to update the `prefix` where a clash 
     /// has been identified whilst interning a `Namespace`.
-    pub(crate) fn set_prefix(&mut self, prefix: Cow<'static, str>) -> () {
+    pub(crate) fn set_prefix(&mut self, prefix: Cow<'a, str>) -> () {
         self.prefix = prefix;
     }
 }
 
-impl Hash for Namespace {
+impl<'a> Hash for Namespace<'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.iri.hash(state);
     }
 }
 
-impl PartialEq for Namespace {
+impl<'a> PartialEq for Namespace<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.iri == other.iri
     }
@@ -100,7 +100,7 @@ impl PartialEq for Namespace {
     }
 }
 
-impl Eq for Namespace {}
+impl<'a> Eq for Namespace<'a> {}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct NamespaceId(u32);
@@ -137,13 +137,13 @@ impl Deref for NamespaceId {
 /// If a `prefix` collision is detected, the `NamespaceStore` will automatically 
 /// append an incrementing number to the end of the prefix.
 #[derive(Debug)]
-pub(crate) struct NamespaceStore {
-    store: FastIndexSet<Namespace>
+pub(crate) struct NamespaceStore<'a> {
+    store: FastIndexSet<Namespace<'a>>
 }
 
-impl NamespaceStore {
+impl<'a> NamespaceStore<'a> {
     /// Create a new [`NamespaceStore`].
-    pub(crate) fn new() -> NamespaceStore {
+    pub(crate) fn new() -> NamespaceStore<'a> {
         NamespaceStore {
             store: FastIndexSet::default()
         }
@@ -151,7 +151,7 @@ impl NamespaceStore {
 
     /// Add a [`Namespace`] to this `NamespaceStore`, returning its index 
     /// [`NamespaceId`].
-    pub(crate) fn intern_namespace(&mut self, ns: Namespace) -> NamespaceId {
+    pub(crate) fn intern_namespace(&mut self, ns: Namespace<'a>) -> NamespaceId {
         // Namespace implements `Hash` only on the `iri` field, so this works.
         match self.store.get_index_of(&ns) {
             // Already exists, so end of.
@@ -174,8 +174,8 @@ impl NamespaceStore {
 
     /// Retrieve a reference to a `Namespace` from this `NamespaceStore` using 
     /// the provided `NamespaceId`.
-    pub(crate) fn query_namespace(&self, ns_id: NamespaceId) -> &Namespace {
-        &self.store.get_index(*ns_id as usize).unwrap()
+    pub(crate) fn query_namespace(&self, ns_id: NamespaceId) -> &Namespace<'a> {
+        self.store.get_index(*ns_id as usize).unwrap()
     }
 
     /// Query the `NamespaceStore` for existing `Namespace`s with the same 
@@ -189,7 +189,7 @@ impl NamespaceStore {
     /// namespaces/prefixes are typically small in number.
     pub(crate) fn query_existing_prefix(
         &self, ns: &Namespace
-    ) -> Option<&Namespace> {
+    ) -> Option<&Namespace<'a>> {
         self.store.iter().find(|this_ns| {
             this_ns.prefix() == ns.prefix()
         })
@@ -201,8 +201,8 @@ impl NamespaceStore {
     /// Something has gone seriously wrong if you've got 255 matching 
     /// namespace prefixes!
     pub(crate) fn find_new_prefix(
-        &self, mut ns: Namespace
-    ) -> Namespace {
+        &self, mut ns: Namespace<'a>
+    ) -> Namespace<'a> {
         let mut suffix: u8 = 0;
 
         let prefix_base: String = ns.prefix().to_string();
@@ -220,7 +220,7 @@ impl NamespaceStore {
     }
 }
 
-impl WriteTriG for NamespaceStore {
+impl<'a> WriteTriG for NamespaceStore<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         for ns in &self.store {
             writer.write_all(b"@prefix ")?;

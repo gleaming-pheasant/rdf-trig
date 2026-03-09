@@ -9,36 +9,36 @@ use crate::traits::{IntoTriple, WriteTriG};
 use super::Quad;
 
 #[derive(Debug)]
-pub struct Triple {
-    subject: Subject,
-    predicate: Predicate,
-    object: Object
+pub struct Triple<'a> {
+    subject: Subject<'a>,
+    predicate: Predicate<'a>,
+    object: Object<'a>
 }
 
-impl Triple {
+impl<'a> Triple<'a> {
     /// Create a new [`Triple`] from parts.
     pub fn new(
-        subject: Subject, predicate: Predicate, object: Object
-    ) -> Triple {
+        subject: Subject<'a>, predicate: Predicate<'a>, object: Object<'a>
+    ) -> Triple<'a> {
         Triple { subject, predicate, object }
     }
 
     /// Convert this `Triple` into a [`Quad`] by assigning it with the provided 
     /// [`GraphId`].
-    pub fn into_quad(self, graph: GraphId) -> Quad {
+    pub fn into_quad(self, graph: GraphId) -> Quad<'a> {
         Quad::new(graph, self)
     }
 
     /// Consume this `Triple`, returning a tuple of the contained ([`Subject`], 
     /// [`Predicate`] and [`Object`])
-    pub fn into_parts(self) -> (Subject, Predicate, Object) {
+    pub fn into_parts(self) -> (Subject<'a>, Predicate<'a>, Object<'a>) {
         (self.subject, self.predicate, self.object)
     }
 }
 
-impl IntoTriple for Triple {
+impl<'a> IntoTriple<'a> for Triple<'a> {
     #[inline(always)]
-    fn into_triple(self) -> Triple {
+    fn into_triple(self) -> Triple<'a> {
         self
     }
 }

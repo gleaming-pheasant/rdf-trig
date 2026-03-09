@@ -2,16 +2,16 @@
 use std::borrow::Cow;
 
 #[derive(Debug)]
-pub enum RdfTrigError {
-    InvalidBoolean(Cow<'static, str>),
-    InvalidDateTime(Cow<'static, str>),
-    InvalidDecimal(Cow<'static, str>),
-    InvalidGYear(Cow<'static, str>),
-    InvalidIri(Cow<'static, str>),
-    InvalidLanguage(Cow<'static, str>)
+pub enum RdfTrigError<'a> {
+    InvalidBoolean(Cow<'a, str>),
+    InvalidDateTime(Cow<'a, str>),
+    InvalidDecimal(Cow<'a, str>),
+    InvalidGYear(Cow<'a, str>),
+    InvalidIri(Cow<'a, str>),
+    InvalidLanguage(Cow<'a, str>)
 }
 
-impl std::fmt::Display for RdfTrigError {
+impl<'a> std::fmt::Display for RdfTrigError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RdfTrigError::InvalidBoolean(bool) => {
@@ -36,7 +36,7 @@ impl std::fmt::Display for RdfTrigError {
     }
 }
 
-impl std::error::Error for RdfTrigError {
+impl<'a> std::error::Error for RdfTrigError<'a> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         // Update if any external errors are required.
         None

@@ -39,17 +39,17 @@ use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 /// 
 /// By default, a `DataStore` will be initialised with the [`XSD`] `Namespace` 
 /// already initialised, to allow for the safe use of "literal" nodes.
-pub struct DataStore {
-    namespaces: NamespaceStore,
-    graphs: GraphStore,
-    nodes: NodeStore,
+pub struct DataStore<'a> {
+    namespaces: NamespaceStore<'a>,
+    graphs: GraphStore<'a>,
+    nodes: NodeStore<'a>,
     quads: QuadStore,
     triples: TripleStore
 }
 
-impl DataStore {
+impl<'a> DataStore<'a> {
     /// Create a new [`DataStore`].
-    pub fn new() -> DataStore {
+    pub fn new() -> DataStore<'a> {
         let mut namespaces = NamespaceStore::new();
         namespaces.intern_namespace(XSD);
 
@@ -65,7 +65,7 @@ impl DataStore {
     /// Add a [`Graph`] to the collection of `Graph`s in this `DataStore`. Doing 
     /// so will return a [`GraphId`] which can be used to assign [`Triple`]s to 
     /// a graph (converting them to [`Quad`]s).
-    pub fn add_graph(&mut self, graph: Graph) -> GraphId {
+    pub fn add_graph(&mut self, graph: Graph<'a>) -> GraphId {
         let (ns, ep) = graph.into_parts();
         let ns_id = self.namespaces.intern_namespace(ns);
         
@@ -73,14 +73,14 @@ impl DataStore {
     }
 
     /// Add a `Triple` (or implementor of [`IntoTriple`]) to this `DataStore`.
-    pub fn add_triple<T: IntoTriple>(&mut self, triple: T) {
+    pub fn add_triple<T: IntoTriple<'a>>(&mut self, triple: T) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple.into_triple());
         self.intern_triple(InternedTriple::new(sub_id, pred_id, obj_id));
     }
 
     /// Add all of the `Triple`s from an impl [`IntoTriples`] iterator to this 
     /// `DataStore`.
-    pub fn add_triples<T: IntoTriples>(&mut self, triples: T) {
+    pub fn add_triples<T: IntoTriples<'a>>(&mut self, triples: T) {
         for triple in triples.into_triples() {
             self.add_triple(triple);
         }
@@ -88,7 +88,7 @@ impl DataStore {
 
     /// Assign the provided `Triple` (or implementor of `Into<Triple>`) to the 
     /// provided `GraphId` and add it to this `DataStore`.
-    pub fn add_triple_to_graph<T: IntoTriple>(
+    pub fn add_triple_to_graph<T: IntoTriple<'a>>(
         &mut self, graph_id: GraphId, triple: T
     ) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(
@@ -102,7 +102,7 @@ impl DataStore {
 
     /// Assign the provided `Vec<Triple>` (or implementor of `Into<Vec<Triple>>`) 
     /// to the provided `GraphId` and add them to this `DataStore`.
-    pub fn add_triples_to_graph<T: IntoTriples>(
+    pub fn add_triples_to_graph<T: IntoTriples<'a>>(
         &mut self, graph_id: GraphId, triples: T
     ) {
         for triple in triples.into_triples() {
@@ -115,7 +115,7 @@ impl DataStore {
 
     /// Add a pre-built [`Quad`] (with a [`GraphId`] already registered to a 
     /// `Triple`) to this `DataStore`.
-    pub fn add_quad(&mut self, quad: Quad) {
+    pub fn add_quad(&mut self, quad: Quad<'a>) {
         let (graph_id, triple) = quad.into_parts();
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple);
 
@@ -131,9 +131,9 @@ impl DataStore {
         for quad in self.quads.into_iter() {
                 fgv.add_triple_view(
                     TripleView::new(
-                        self.node_id_to_view(*&quad.subject_id()),
-                        self.node_id_to_view(*&quad.predicate_id()),
-                        self.node_id_to_view(*&quad.object_id())
+                        self.node_id_to_view(quad.subject_id()),
+                        self.node_id_to_view(quad.predicate_id()),
+                        self.node_id_to_view(quad.object_id())
                     )
                 );
             }
@@ -151,7 +151,7 @@ impl DataStore {
 
     /// Retrieve an iterator over [`FullGraphView`]s for every [`Graph`] 
     /// contained in this `DataStore`.
-    pub fn get_all_full_graph_views<'a>(&self)
+    pub fn get_all_full_graph_views(&self)
     -> impl Iterator<Item = FullGraphView<'_>> {
         (0..self.graphs.len()).map(|ix| {
             self.get_full_graph_view(GraphId::from(ix))
@@ -189,14 +189,14 @@ impl DataStore {
     /// Add a [`Namespace`] to the `namespaces` [`NamespaceStore`] returning its 
     /// [`NamespaceId`] (index in the store, cast as u32).
     #[inline]
-    fn intern_namespace(&mut self, namespace: Namespace) -> NamespaceId {
+    fn intern_namespace(&mut self, namespace: Namespace<'a>) -> NamespaceId {
         self.namespaces.intern_namespace(namespace)
     }
 
     /// Add an [`InternedNode`] to the `nodes` [`NodeStore`] returning its 
     /// [`NodeId`] (index in the store, cast as u32).
     #[inline]
-    fn intern_node(&mut self, node: InternedNode) -> NodeId {
+    fn intern_node(&mut self, node: InternedNode<'a>) -> NodeId {
         self.nodes.intern_node(node)
     }
 
@@ -218,7 +218,7 @@ impl DataStore {
     /// the `nodes` [`NodeStore`], and return a (`NodeId`, `NodeId`, `NodeId`) 
     /// tuple of the [`NodeId`] for the `subject`, `predicate` and `object`.
     fn intern_nodes_from_triple(
-        &mut self, triple: Triple
+        &mut self, triple: Triple<'a>
     ) -> (NodeId, NodeId, NodeId) {
         let (subject, predicate, object) = triple.into_parts();
         
@@ -255,7 +255,7 @@ impl DataStore {
     }
 }
 
-impl WriteTriG for DataStore {
+impl<'a> WriteTriG for DataStore<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         self.namespaces.write_trig(writer)?;
         writer.write_all(b"\n")?;

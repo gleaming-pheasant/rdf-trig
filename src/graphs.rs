@@ -11,20 +11,20 @@ use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// A wrapper around an [`IndexSet<InternedGraph>`] which acts as a fast store 
 /// for unique [`Graph`] values.
-pub(crate) struct GraphStore {
-    store: FastIndexSet<InternedGraph>
+pub(crate) struct GraphStore<'a> {
+    store: FastIndexSet<InternedGraph<'a>>
 }
 
-impl GraphStore {
+impl<'a> GraphStore<'a> {
     /// Create a new [`GraphStore`].
-    pub(crate) fn new() -> GraphStore {
+    pub(crate) fn new() -> GraphStore<'a> {
         GraphStore {
             store: FastIndexSet::default()
         }
     }
 
     /// Add an [`InternedGraph`] to this `GraphStore`.
-    pub(crate) fn intern_graph(&mut self, graph: InternedGraph) -> GraphId {
+    pub(crate) fn intern_graph(&mut self, graph: InternedGraph<'a>) -> GraphId {
         GraphId::from(self.store.insert_full(graph).0)
     }
 
@@ -45,21 +45,21 @@ impl GraphStore {
     }
 }
 
-impl Deref for GraphStore {
-    type Target = FastIndexSet<InternedGraph>;
+impl<'a> Deref for GraphStore<'a> {
+    type Target = FastIndexSet<InternedGraph<'a>>;
 
     fn deref(&self) -> &Self::Target {
         &self.store
     }
 }
 
-impl<'a> IntoIterator for &'a GraphStore {
-    type Item = &'a InternedGraph;
-    type IntoIter = indexmap::set::Iter<'a, InternedGraph>;
+impl<'a> IntoIterator for GraphStore<'a> {
+    type Item = InternedGraph<'a>;
+    type IntoIter = indexmap::set::IntoIter<InternedGraph<'a>>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.store.iter()
+        self.store.into_iter()
     }
 }
 
@@ -70,16 +70,16 @@ impl<'a> IntoIterator for &'a GraphStore {
 /// It takes just the `endpoint` and the registered `Namespace`'s 
 /// [`NamespaceId`].
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct InternedGraph {
+pub(crate) struct InternedGraph<'a> {
     namespace_id: NamespaceId,
-    endpoint: Cow<'static, str>
+    endpoint: Cow<'a, str>
 }
 
-impl InternedGraph {
+impl<'a> InternedGraph<'a> {
     /// Create a new [`InternedGraph`].
     pub(crate) fn new(
-        ns_id: NamespaceId, endpoint: Cow<'static, str>
-    ) -> InternedGraph {
+        ns_id: NamespaceId, endpoint: Cow<'a, str>
+    ) -> InternedGraph<'a> {
         InternedGraph { namespace_id: ns_id, endpoint: endpoint }
     }
 
@@ -100,16 +100,16 @@ impl InternedGraph {
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug, Hash)]
-pub struct Graph {
-    namespace: Namespace,
-    endpoint: Cow<'static, str>
+pub struct Graph<'a> {
+    namespace: Namespace<'a>,
+    endpoint: Cow<'a, str>
 }
 
-impl Graph {
+impl<'a> Graph<'a> {
     /// Create a new [`Graph`].
-    pub fn new<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Graph {
+    pub fn new<C: Into<Cow<'a, str>>>(
+        namespace: Namespace<'a>, endpoint: C
+    ) -> Graph<'a> {
         Graph { namespace, endpoint: endpoint.into() }
     }
 
@@ -120,11 +120,11 @@ impl Graph {
     /// is invalid.
     pub fn new_with_new_namespace<P, I, E>(
         prefix: P, iri: I, endpoint: E
-    ) -> Result<Graph, RdfTrigError>
+    ) -> Result<Graph<'a>, RdfTrigError<'a>>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        E: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>,
+        E: Into<Cow<'a, str>>
     {
         Ok(Graph {
             namespace: Namespace::new(prefix, iri)?,
@@ -134,7 +134,7 @@ impl Graph {
 
     /// Return a ([`Namespace`], [`Cow<'static, str>`]) tuple containing this 
     /// `Graph`'s `Namespace` and `endpoint`.
-    pub fn into_parts(self) -> (Namespace, Cow<'static, str>) {
+    pub fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
         (self.namespace, self.endpoint)
     }
 }
@@ -175,7 +175,7 @@ impl Deref for GraphId {
 /// [`DataStore`](crate::store::DataStore).
 #[derive(Debug)]
 pub struct GraphView<'a> {
-    namespace: &'a Namespace,
+    namespace: &'a Namespace<'a>,
     endpoint: &'a str
 }
 
@@ -183,13 +183,13 @@ impl<'a> GraphView<'a> {
     /// Private helper function to build a `GraphView` from references to a 
     /// [`Namespace`] and an `endpoint`.
     pub(crate) fn new(
-        namespace: &'a Namespace, endpoint: &'a str
+        namespace: &'a Namespace<'a>, endpoint: &'a str
     ) -> GraphView<'a> {
         GraphView { namespace, endpoint }
     }
 
     /// Get a reference to the [`Namespace`] for this `GraphView`.
-    pub fn namespace(&self) -> &Namespace {
+    pub fn namespace(&self) -> &Namespace<'a> {
         &self.namespace
     }
 

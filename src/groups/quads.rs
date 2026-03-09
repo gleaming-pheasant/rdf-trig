@@ -9,12 +9,12 @@ use crate::nodes::NodeId;
 /// [`Graph`] that has been registered with a 
 /// [`TripleStore`](super::triples::TripleStore).
 #[derive(Debug)]
-pub struct Quad {
+pub struct Quad<'a> {
     graph: GraphId,
-    triple: Triple
+    triple: Triple<'a>
 }
 
-impl Quad {
+impl<'a> Quad<'a> {
     /// Create a new `Quad`.
     pub fn new(
         graph: GraphId, triple: Triple
@@ -24,7 +24,7 @@ impl Quad {
 
     /// Consume this `Quad` and splits it into a tuple of its (`GraphId`, 
     /// `Triple`).
-    pub fn into_parts(self) -> (GraphId, Triple) {
+    pub fn into_parts(self) -> (GraphId, Triple<'a>) {
         (self.graph, self.triple)
     }
 }
