@@ -31,16 +31,16 @@ const FMT_NAIVE_ISO: &[time::format_description::FormatItem<'_>] =
 /// types directly, to prevent invalid nodes being used in the wrong locations 
 /// in a [`Triple`](crate::groups::triples::Triple).
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct IriNode<'a> {
-    namespace: Namespace<'a>,
-    endpoint: Cow<'a, str>
+pub struct IriNode {
+    namespace: Namespace,
+    endpoint: Cow<'static, str>
 }
 
-impl<'a> IriNode<'a> {
+impl IriNode {
     /// Create a new [`IriNode`].
-    pub(crate) fn new<C: Into<Cow<'a, str>>>(
-        namespace: Namespace<'a>, endpoint: C
-    ) -> IriNode<'a> {
+    pub(crate) fn new<C: Into<Cow<'static, str>>>(
+        namespace: Namespace, endpoint: C
+    ) -> IriNode {
         IriNode { namespace, endpoint: endpoint.into() }
     }
 
@@ -50,11 +50,11 @@ impl<'a> IriNode<'a> {
     /// URL.
     pub(crate) fn new_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Result<IriNode<'a>, RdfTrigError<'a>>
+    ) -> Result<IriNode, RdfTrigError>
     where
-        P: Into<Cow<'a, str>>,
-        I: Into<Cow<'a, str>>,
-        C: Into<Cow<'a, str>>
+        P: Into<Cow<'static, str>>,
+        I: Into<Cow<'static, str>>,
+        C: Into<Cow<'static, str>>
     {
         Ok(IriNode {
             namespace: Namespace::new(prefix, iri)?,
@@ -65,29 +65,29 @@ impl<'a> IriNode<'a> {
     /// Allows you to create a new `IriNode` which is composed of static values 
     /// known as compile time, exported via [`Predicate`](crate::nodes::Predicate).
     pub(crate) const fn new_const(
-        namespace: Namespace<'static>, endpoint: &'static str
-    ) -> IriNode<'a> {
+        namespace: Namespace, endpoint: &'static str
+    ) -> IriNode {
         IriNode { namespace, endpoint: Cow::Borrowed(endpoint) }
     }
 
     /// Consume this `IriNode`, returning a tuple of its `namespace` and 
     /// `endpoint`.
-    pub(crate) fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
+    pub(crate) fn into_parts(self) -> (Namespace, Cow<'static, str>) {
         (self.namespace, self.endpoint)
     }
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct InternedIriNode<'a> {
+pub(crate) struct InternedIriNode {
     namespace_id: NamespaceId,
-    endpoint: Cow<'a, str>
+    endpoint: Cow<'static, str>
 }
 
-impl<'a> InternedIriNode<'a> {
+impl InternedIriNode {
     /// Create a new [`InternedIriNode`].
     pub(crate) fn new(
-        namespace_id: NamespaceId, endpoint: Cow<'a, str>
-    ) -> InternedIriNode<'a> {
+        namespace_id: NamespaceId, endpoint: Cow<'static, str>
+    ) -> InternedIriNode {
         InternedIriNode { namespace_id, endpoint }
     }
 
@@ -112,16 +112,16 @@ impl<'a> InternedIriNode<'a> {
 /// `BlankNode`s cannot be initialised directly, and must be generated as part 
 /// of [`Subject`] or [`Object`] constructors.
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct BlankNode<'a>(Cow<'a, str>);
+pub struct BlankNode(Cow<'static, str>);
 
-impl<'a> BlankNode<'a> {
+impl BlankNode {
     /// Create a new `BlankNode` with the provided `id`.
-    pub(crate) fn new<C: Into<Cow<'a, str>>>(id: C) -> BlankNode<'a> {
+    pub(crate) fn new<C: Into<Cow<'static, str>>>(id: C) -> BlankNode {
         BlankNode(id.into())
     }
 }
 
-impl<'a> WriteTriG for BlankNode<'a> {
+impl WriteTriG for BlankNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         writer.write_all(b"_:")?;
         write_escaped_local_name(writer, &self.0)?;
@@ -140,15 +140,15 @@ impl<'a> WriteTriG for BlankNode<'a> {
 /// currently planned.
 #[derive(Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
-pub enum LiteralNode<'a> {
+pub enum LiteralNode {
     Boolean(bool),
-    Datetime(Cow<'a, str>),
-    Decimal(Cow<'a, str>),
-    GYear(Cow<'a, str>),
-    String(StringLiteral<'a>)
+    Datetime(Cow<'static, str>),
+    Decimal(Cow<'static, str>),
+    GYear(Cow<'static, str>),
+    String(StringLiteral)
 }
 
-impl<'a> LiteralNode<'a> {
+impl LiteralNode {
     /// Declare a `LiteralNode::Boolean` from the provided value.
     /// 
     /// Returns an `RdfTrigError::InvalidBoolean` if the provided value cannot 
@@ -162,14 +162,14 @@ impl<'a> LiteralNode<'a> {
     /// 
     /// For ease, `LiteralNode` also implements [`From<bool>`] for quick 
     /// conversions.
-    pub(crate) fn boolean<C: Into<Cow<'a, str>>>(value: C)
-    -> Result<LiteralNode<'a>, RdfTrigError<'a>> {
-        let cow_val: Cow<'a, str> = value.into();
+    pub(crate) fn boolean<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfTrigError> {
+        let cow_val: Cow<'static, str> = value.into();
 
         match &*cow_val {
             "true" | "1" => Ok(LiteralNode::Boolean(true)),
             "false" | "0" => Ok(LiteralNode::Boolean(false)),
-            _ => Err(RdfTrigError::InvalidBoolean(cow_val))
+            _ => Err(RdfTrigError::InvalidBoolean(cow_val.to_string()))
         }        
     }
 
@@ -183,9 +183,9 @@ impl<'a> LiteralNode<'a> {
     /// [`From<>`] for [`chrono::DateTime`], [`chrono::NaiveDateTime`], 
     /// [`time::OffsetDateTime`] and [`time::PrimitiveDateTime`] with the 
     /// relevant `chrono` or `time` feature flags enabled.
-    pub(crate) fn datetime<C: Into<Cow<'a, str>>>(value: C)
-    -> Result<LiteralNode<'a>, RdfTrigError<'a>> {
-        let cow_val: Cow<'a, str> = value.into();
+    pub(crate) fn datetime<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfTrigError> {
+        let cow_val: Cow<'static, str> = value.into();
 
         if OffsetDateTime::parse(&cow_val, &Rfc3339).is_ok() {
             return Ok(LiteralNode::Datetime(cow_val));
@@ -198,7 +198,7 @@ impl<'a> LiteralNode<'a> {
         ).is_ok() {
             Ok(LiteralNode::Datetime(cow_val))
         } else {
-            Err(RdfTrigError::InvalidDateTime(cow_val))
+            Err(RdfTrigError::InvalidDateTime(cow_val.to_string()))
         }
     }
 
@@ -209,16 +209,16 @@ impl<'a> LiteralNode<'a> {
     /// 
     /// For ease, `LiteralNode` also implements [`From<f32>`] for quick 
     /// conversions.
-    pub(crate) fn decimal<C: Into<Cow<'a, str>>>(value: C)
-    -> Result<LiteralNode<'a>, RdfTrigError<'a>> {
+    pub(crate) fn decimal<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfTrigError> {
         // Deliberately does not drop the `str` in place of the f32 at any 
         // point, as the crate would only have to return it to that format for 
         // io::Write.
-        let cow_val: Cow<'a, str> = value.into();
+        let cow_val: Cow<'static, str> = value.into();
 
         match cow_val.parse::<f32>() {
             Ok(_) => Ok(LiteralNode::Decimal(cow_val)),
-            Err(_) => Err(RdfTrigError::InvalidDecimal(cow_val))
+            Err(_) => Err(RdfTrigError::InvalidDecimal(cow_val.to_string()))
         }
     }
 
@@ -226,13 +226,13 @@ impl<'a> LiteralNode<'a> {
     /// 
     /// Returns an `RdfTrigError::InvalidGYear` if the provided value cannot be 
     /// parsed as an XSD gYear (CE/BCE year, with or without a timezone offset).
-    pub(crate) fn gyear<C: Into<Cow<'a, str>>>(value: C)
-    -> Result<LiteralNode<'a>, RdfTrigError<'a>> {
-        let cow_val: Cow<'a, str> = value.into();
+    pub(crate) fn gyear<C: Into<Cow<'static, str>>>(value: C)
+    -> Result<LiteralNode, RdfTrigError> {
+        let cow_val: Cow<'static, str> = value.into();
         let bytes = cow_val.as_bytes();
         let len = bytes.len(); // Saved as used repeatedly.
 
-        if len < 4 { return Err(RdfTrigError::InvalidGYear(cow_val)) }
+        if len < 4 { return Err(RdfTrigError::InvalidGYear(cow_val.to_string())) }
 
         let mut cursor = 0;
 
@@ -249,7 +249,7 @@ impl<'a> LiteralNode<'a> {
 
         if len - year_start < 4 {
             // Still not long enough, so invalid.
-            return Err(RdfTrigError::InvalidGYear(cow_val));
+            return Err(RdfTrigError::InvalidGYear(cow_val.to_string()));
         }
 
         if cursor < len {
@@ -263,7 +263,7 @@ impl<'a> LiteralNode<'a> {
                     && m1.is_ascii_digit() && m2.is_ascii_digit() => {
                     cursor += 6;
                 }
-                _ => return Err(RdfTrigError::InvalidGYear(cow_val)),
+                _ => return Err(RdfTrigError::InvalidGYear(cow_val.to_string())),
             }
         }
 
@@ -272,7 +272,7 @@ impl<'a> LiteralNode<'a> {
             Ok(LiteralNode::GYear(cow_val))
         } else {
             // Too long/too many characters
-            Err(RdfTrigError::InvalidDateTime(cow_val))
+            Err(RdfTrigError::InvalidDateTime(cow_val.to_string()))
         }
     }
 
@@ -284,7 +284,7 @@ impl<'a> LiteralNode<'a> {
     /// and write the padding on [`Write`], the requirement to accept `str` 
     /// types to allow gYears to have timezones means that the formatting must 
     /// happen here to match the same type.
-    pub(crate) fn gyear_from_i32(value: i32) -> LiteralNode<'a> {
+    pub(crate) fn gyear_from_i32(value: i32) -> LiteralNode {
         let formatted_gyear = if value < 0 {
             format!("-{:0>4}", value.unsigned_abs())
         } else {
@@ -301,10 +301,10 @@ impl<'a> LiteralNode<'a> {
     /// not a valid ISO-639 language code.
     pub(crate) fn string<L, V>(
         language: Option<L>, value: V
-    ) -> Result<LiteralNode<'a>, RdfTrigError<'a>>
+    ) -> Result<LiteralNode, RdfTrigError>
     where
-        L: Into<Cow<'a, str>>,
-        V: Into<Cow<'a, str>>
+        L: Into<Cow<'static, str>>,
+        V: Into<Cow<'static, str>>
     {
         let lang_cow_opt = language.map(Into::into);
 
@@ -313,7 +313,9 @@ impl<'a> LiteralNode<'a> {
             if !(bytes.len() == 2 || bytes.len() == 3) 
             && !bytes.iter().all(u8::is_ascii_lowercase) {
                 // Unwrap is safe as is within if let Some(var) clause.
-                return Err(RdfTrigError::InvalidLanguage(lang_cow_opt.unwrap()))
+                return Err(RdfTrigError::InvalidLanguage(
+                    lang_cow_opt.unwrap().to_string()
+                ))
             }
         }
 
@@ -324,28 +326,28 @@ impl<'a> LiteralNode<'a> {
 
     /// Create a new `LiteralNode::String` with the `language` code already set 
     /// to "en" for English.
-    pub(crate) fn string_en<V: Into<Cow<'a, str>>>(
+    pub(crate) fn string_en<V: Into<Cow<'static, str>>>(
         value: V
-    ) -> LiteralNode<'a> {
+    ) -> LiteralNode {
         LiteralNode::String(StringLiteral::new_en(value))
     }
 
     /// Create a new `LiteralNode::String` with the `language` code set to 
     /// `None`.
-    pub(crate) fn string_no_lang<V: Into<Cow<'a, str>>>(
+    pub(crate) fn string_no_lang<V: Into<Cow<'static, str>>>(
         value: V
-    ) -> LiteralNode<'a> {
+    ) -> LiteralNode {
         LiteralNode::String(StringLiteral::new_no_lang(value))
     }
 }
 
-impl<'a> From<bool> for LiteralNode<'a> {
+impl From<bool> for LiteralNode {
     fn from(value: bool) -> Self {
         LiteralNode::Boolean(value)
     }
 }
 
-impl<'a> From<f32> for LiteralNode<'a> {
+impl From<f32> for LiteralNode {
     fn from(value: f32) -> Self {
         LiteralNode::Decimal(Cow::Owned(value.to_string()))
     }
@@ -353,8 +355,8 @@ impl<'a> From<f32> for LiteralNode<'a> {
 
 
 #[cfg(feature = "chrono")]
-impl<'a> From<NaiveDateTime> for LiteralNode<'a> {
-    fn from(value: NaiveDateTime) -> LiteralNode<'a> {
+impl From<NaiveDateTime> for LiteralNode {
+    fn from(value: NaiveDateTime) -> LiteralNode {
         LiteralNode::Datetime(
             Cow::Owned(value.format("%Y-%m-%dT%H:%M:%S").to_string())
         )
@@ -362,7 +364,7 @@ impl<'a> From<NaiveDateTime> for LiteralNode<'a> {
 }
 
 #[cfg(feature = "chrono")]
-impl<'a> From<DateTime<FixedOffset>> for LiteralNode<'a> {
+impl From<DateTime<FixedOffset>> for LiteralNode {
     fn from(value: DateTime<FixedOffset>) -> Self {
         LiteralNode::Datetime(
             Cow::Owned(value.format("%+").to_string())
@@ -371,7 +373,7 @@ impl<'a> From<DateTime<FixedOffset>> for LiteralNode<'a> {
 }
 
 #[cfg(feature = "chrono")]
-impl<'a> From<DateTime<Local>> for LiteralNode<'a> {
+impl From<DateTime<Local>> for LiteralNode {
     fn from(value: DateTime<Local>) -> Self {
         LiteralNode::Datetime(
             Cow::Owned(value.format("%+").to_string())
@@ -380,7 +382,7 @@ impl<'a> From<DateTime<Local>> for LiteralNode<'a> {
 }
 
 #[cfg(feature = "chrono")]
-impl<'a> From<DateTime<Utc>> for LiteralNode<'a> {
+impl From<DateTime<Utc>> for LiteralNode {
     fn from(value: DateTime<Utc>) -> Self {
         LiteralNode::Datetime(
             Cow::Owned(value.format("%+").to_string())
@@ -389,8 +391,8 @@ impl<'a> From<DateTime<Utc>> for LiteralNode<'a> {
 }
 
 #[cfg(feature = "time")]
-impl<'a> TryFrom<PrimitiveDateTime> for LiteralNode<'a> {
-    type Error = RdfTrigError<'a>;
+impl TryFrom<PrimitiveDateTime> for LiteralNode {
+    type Error = RdfTrigError;
 
     fn try_from(value: PrimitiveDateTime) -> Result<Self, Self::Error> {
         let fmt = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]");
@@ -407,8 +409,8 @@ impl<'a> TryFrom<PrimitiveDateTime> for LiteralNode<'a> {
 }
 
 #[cfg(feature = "time")]
-impl<'a> TryFrom<OffsetDateTime> for LiteralNode<'a> {
-    type Error = RdfTrigError<'a>;
+impl TryFrom<OffsetDateTime> for LiteralNode {
+    type Error = RdfTrigError;
 
     fn try_from(value: OffsetDateTime) -> Result<Self, Self::Error> {
         match value.format(&Rfc3339) {
@@ -422,7 +424,7 @@ impl<'a> TryFrom<OffsetDateTime> for LiteralNode<'a> {
     }
 }
 
-impl<'a> WriteTriG for LiteralNode<'a> {
+impl WriteTriG for LiteralNode {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         match self {
             LiteralNode::Boolean(b) => {
@@ -465,26 +467,26 @@ impl<'a> WriteTriG for LiteralNode<'a> {
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct StringLiteral<'a> {
-    language: Option<Cow<'a, str>>,
-    value: Cow<'a, str>
+pub struct StringLiteral {
+    language: Option<Cow<'static, str>>,
+    value: Cow<'static, str>
 }
 
-impl<'a> StringLiteral<'a> {
+impl StringLiteral {
     /// Create a new `StringLiteral` with the `language` set to Some("en").
-    pub(crate) fn new_en<V: Into<Cow<'a, str>>>(value: V) -> StringLiteral<'a> {
+    pub(crate) fn new_en<V: Into<Cow<'static, str>>>(value: V) -> StringLiteral {
         StringLiteral { language: Some("en".into()), value: value.into() }
     }
 
     /// Create a new `StringLiteral` with the `language` set to `None`.
-    pub(crate) fn new_no_lang<V: Into<Cow<'a, str>>>(
+    pub(crate) fn new_no_lang<V: Into<Cow<'static, str>>>(
         value: V
-    ) -> StringLiteral<'a> {
+    ) -> StringLiteral {
         StringLiteral { language: None, value: value.into() }
     }
 
     /// Return a reference to this `StringLiteral`'s `language`.
-    pub(crate) fn language(&self) -> &Option<Cow<'a, str>> {
+    pub(crate) fn language(&self) -> &Option<Cow<'static, str>> {
         &self.language
     }
 
@@ -495,10 +497,10 @@ impl<'a> StringLiteral<'a> {
 }
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) enum InternedNode<'a> {
-    Blank(BlankNode<'a>),
-    Iri(InternedIriNode<'a>),
-    Literal(LiteralNode<'a>)
+pub(crate) enum InternedNode {
+    Blank(BlankNode),
+    Iri(InternedIriNode),
+    Literal(LiteralNode)
 }
 
 #[cfg(test)]

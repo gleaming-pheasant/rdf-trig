@@ -9,12 +9,12 @@ use crate::nodes::NodeId;
 /// [`Graph`] that has been registered with a 
 /// [`TripleStore`](super::triples::TripleStore).
 #[derive(Debug)]
-pub struct Quad<'a> {
+pub struct Quad {
     graph: GraphId,
-    triple: Triple<'a>
+    triple: Triple
 }
 
-impl<'a> Quad<'a> {
+impl Quad {
     /// Create a new `Quad`.
     pub fn new(
         graph: GraphId, triple: Triple
@@ -24,7 +24,7 @@ impl<'a> Quad<'a> {
 
     /// Consume this `Quad` and splits it into a tuple of its (`GraphId`, 
     /// `Triple`).
-    pub fn into_parts(self) -> (GraphId, Triple<'a>) {
+    pub fn into_parts(self) -> (GraphId, Triple) {
         (self.graph, self.triple)
     }
 }
@@ -101,12 +101,10 @@ impl QuadStore {
     }
 }
 
-impl<'a> IntoIterator for &'a QuadStore {
-    type Item = &'a InternedQuad;
-    type IntoIter = indexmap::set::Iter<'a, InternedQuad>;
+impl Deref for QuadStore {
+    type Target = FastIndexSet<InternedQuad>;
 
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.store.iter()
+    fn deref(&self) -> &Self::Target {
+        &self.store
     }
 }

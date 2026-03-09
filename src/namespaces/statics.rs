@@ -12,6 +12,12 @@ pub const AOCAT: Namespace = Namespace::new_const(
     "aocat", "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/"
 );
 
+/// A namespace for graphs forming part of the 
+/// [ARIADNE portal](https://portal.ariadne-infrastructure.eu/).
+pub const ARIADNEAPI: Namespace = Namespace::new_const(
+    "ariadneapi", "https://ariadne-infrastructure.eu/"
+);
+
 /// A namespace for [ARIADNE](https://portal.ariadne-infrastructure.eu/) resources.
 pub const ARIADNEPLUS: Namespace = Namespace::new_const(
     "ariadneplus", "https://ariadne-infrastructure.eu/aocat/"

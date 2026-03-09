@@ -1,6 +1,9 @@
 use std::borrow::Cow;
+use std::hash::Hash;
 use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
+
+use indexmap::Equivalent;
 
 use crate::FastIndexSet;
 use crate::errors::RdfTrigError;
@@ -12,21 +15,52 @@ use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 /// A wrapper around an [`IndexSet<InternedGraph>`] which acts as a fast store 
 /// for unique [`Graph`] values.
 #[derive(Debug)]
-pub(crate) struct GraphStore<'a> {
-    store: FastIndexSet<InternedGraph<'a>>
+pub(crate) struct GraphStore {
+    store: FastIndexSet<InternedGraph>
 }
 
-impl<'a> GraphStore<'a> {
+impl GraphStore {
     /// Create a new [`GraphStore`].
-    pub(crate) fn new() -> GraphStore<'a> {
+    pub(crate) fn new() -> GraphStore {
         GraphStore {
             store: FastIndexSet::default()
         }
     }
 
-    /// Add an [`InternedGraph`] to this `GraphStore`.
-    pub(crate) fn intern_graph(&mut self, graph: InternedGraph<'a>) -> GraphId {
+    /// Helper function to intern a graph directly after the internal types have 
+    /// been interned and lifetimes have been derived.
+    fn intern_graph(&mut self, graph: InternedGraph) -> GraphId {
         GraphId::from(self.store.insert_full(graph).0)
+    }
+
+    /// Intern a graph with a static `endpoint`.
+    pub(crate) fn intern_static_graph<C: Into<Cow<'static, str>>>(
+        &mut self, namespace_id: NamespaceId, endpoint: C
+    ) -> GraphId {
+        let endpoint = endpoint.into();
+        let graph = InternedGraph::new(namespace_id, endpoint);
+        self.intern_graph(graph)
+    }
+
+    /// Call this function if the Graph you're attempting to intern is not 
+    /// static; it can be either a string slice or an owned String, and will 
+    /// only be allocated as a String by this function if the endpoint has not 
+    /// already been interned.
+    pub(crate) fn intern_borrowed_graph<'a, C: Into<Cow<'a, str>>>(
+        &mut self, namespace_id: NamespaceId, endpoint: C
+    ) -> GraphId {
+        let endpoint = endpoint.into();
+        let key = InternedGraphSearchKey {namespace_id, endpoint: &endpoint};
+
+        if let Some(ix) = self.store.get_index_of(&key) {
+            return GraphId::from(ix)
+        }
+
+        let owned = InternedGraph {
+            namespace_id, endpoint: Cow::Owned(endpoint.into_owned())
+        };
+
+        self.intern_graph(owned)
     }
 
     /// Get an `InternedGraph`'s `NamespaceId` by searching a provided `GraphId`.
@@ -46,17 +80,17 @@ impl<'a> GraphStore<'a> {
     }
 }
 
-impl<'a> Deref for GraphStore<'a> {
-    type Target = FastIndexSet<InternedGraph<'a>>;
+impl Deref for GraphStore {
+    type Target = FastIndexSet<InternedGraph>;
 
     fn deref(&self) -> &Self::Target {
         &self.store
     }
 }
 
-impl<'a> IntoIterator for GraphStore<'a> {
-    type Item = InternedGraph<'a>;
-    type IntoIter = indexmap::set::IntoIter<InternedGraph<'a>>;
+impl IntoIterator for GraphStore {
+    type Item = InternedGraph;
+    type IntoIter = indexmap::set::IntoIter<InternedGraph>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -64,23 +98,22 @@ impl<'a> IntoIterator for GraphStore<'a> {
     }
 }
 
-
 /// An [`InternedGraph`] is a [`Graph`] with its [`Namespace`] already 
 /// registered with a [`NamespaceStore`](crate::namespaces::NamespaceStore).
 /// 
 /// It takes just the `endpoint` and the registered `Namespace`'s 
 /// [`NamespaceId`].
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct InternedGraph<'a> {
+pub(crate) struct InternedGraph {
     namespace_id: NamespaceId,
-    endpoint: Cow<'a, str>
+    endpoint: Cow<'static, str>
 }
 
-impl<'a> InternedGraph<'a> {
+impl InternedGraph {
     /// Create a new [`InternedGraph`].
     pub(crate) fn new(
-        ns_id: NamespaceId, endpoint: Cow<'a, str>
-    ) -> InternedGraph<'a> {
+        ns_id: NamespaceId, endpoint: Cow<'static, str>
+    ) -> InternedGraph {
         InternedGraph { namespace_id: ns_id, endpoint: endpoint }
     }
 
@@ -95,22 +128,46 @@ impl<'a> InternedGraph<'a> {
     }
 }
 
+
+/// Provides a wrapper around a borrowed version of an [`InternedGraph`], which 
+/// implements [`Equivalent`]. This allows a key that is borrowed - without 
+/// necessarily being `'static` - to be queried, in order to prevent allocation 
+/// of [`String`]s where the same `String` might be used repeatedly instead.
+#[derive(Debug)]
+struct InternedGraphSearchKey<'a> {
+    namespace_id: NamespaceId,
+    endpoint: &'a str
+}
+
+impl Hash for InternedGraphSearchKey<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.namespace_id.hash(state);
+        self.endpoint.hash(state);
+    }
+}
+
+impl Equivalent<InternedGraph> for InternedGraphSearchKey<'_> {
+    fn equivalent(&self, key: &InternedGraph) -> bool {
+        self.namespace_id == key.namespace_id && *self.endpoint == *key.endpoint
+    }
+}
+
 /// As with IRI nodes underlying `Subject`s, `Predicate`s and `Object`s, this 
 /// is a combination of a [`Namespace`] and an `endpoint`.
 /// 
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug, Hash)]
-pub struct Graph<'a> {
-    namespace: Namespace<'a>,
-    endpoint: Cow<'a, str>
+pub struct Graph {
+    namespace: Namespace,
+    endpoint: Cow<'static, str>
 }
 
-impl<'a> Graph<'a> {
+impl Graph {
     /// Create a new [`Graph`].
-    pub fn new<C: Into<Cow<'a, str>>>(
-        namespace: Namespace<'a>, endpoint: C
-    ) -> Graph<'a> {
+    pub fn new<C: Into<Cow<'static, str>>>(
+        namespace: Namespace, endpoint: C
+    ) -> Graph {
         Graph { namespace, endpoint: endpoint.into() }
     }
 
@@ -121,11 +178,11 @@ impl<'a> Graph<'a> {
     /// is invalid.
     pub fn new_with_new_namespace<P, I, E>(
         prefix: P, iri: I, endpoint: E
-    ) -> Result<Graph<'a>, RdfTrigError<'a>>
+    ) -> Result<Graph, RdfTrigError>
     where
-        P: Into<Cow<'a, str>>,
-        I: Into<Cow<'a, str>>,
-        E: Into<Cow<'a, str>>
+        P: Into<Cow<'static, str>>,
+        I: Into<Cow<'static, str>>,
+        E: Into<Cow<'static, str>>
     {
         Ok(Graph {
             namespace: Namespace::new(prefix, iri)?,
@@ -135,7 +192,7 @@ impl<'a> Graph<'a> {
 
     /// Return a ([`Namespace`], [`Cow<'static, str>`]) tuple containing this 
     /// `Graph`'s `Namespace` and `endpoint`.
-    pub fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
+    pub fn into_parts(self) -> (Namespace, Cow<'static, str>) {
         (self.namespace, self.endpoint)
     }
 }
@@ -176,7 +233,7 @@ impl Deref for GraphId {
 /// [`DataStore`](crate::store::DataStore).
 #[derive(Debug)]
 pub struct GraphView<'a> {
-    namespace: &'a Namespace<'a>,
+    namespace: &'a Namespace,
     endpoint: &'a str
 }
 
@@ -184,13 +241,13 @@ impl<'a> GraphView<'a> {
     /// Private helper function to build a `GraphView` from references to a 
     /// [`Namespace`] and an `endpoint`.
     pub(crate) fn new(
-        namespace: &'a Namespace<'a>, endpoint: &'a str
+        namespace: &'a Namespace, endpoint: &'a str
     ) -> GraphView<'a> {
         GraphView { namespace, endpoint }
     }
 
     /// Get a reference to the [`Namespace`] for this `GraphView`.
-    pub fn namespace(&self) -> &Namespace<'a> {
+    pub fn namespace(&self) -> &Namespace {
         &self.namespace
     }
 

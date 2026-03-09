@@ -21,19 +21,19 @@
 //! use rdf_trig::namespaces::statics::{AOCAT, ARIADNEPLUS};
 //! use rdf_trig::nodes::{Object, Predicate, Subject};
 //! 
-//! struct MyTriple<'a> {
+//! struct MyTriple {
 //!     id: usize,
-//!     value: &'a str
+//!     value: &'static str
 //! }
 //! 
-//! impl<'a> MyTriple<'a> {
-//!     fn new(id: usize, value: &'a str) -> MyTriple<'a> {
+//! impl MyTriple {
+//!     fn new(id: usize, value: &'static str) -> MyTriple {
 //!         MyTriple { id, value }
 //!     }
 //! }
 //! 
-//! impl<'a> IntoTriple<'a> for MyTriple<'a> {
-//!     fn into_triple(self) -> Triple<'a> {
+//! impl IntoTriple for MyTriple {
+//!     fn into_triple(self) -> Triple {
 //!         Triple::new(
 //!             Subject::iri(ARIADNEPLUS, self.id.to_string()),
 //!             Predicate::new(AOCAT, "has_property"),
@@ -185,8 +185,8 @@ mod tests {
         }
     }
 
-    impl IntoTriple<'_> for MyTriple {
-        fn into_triple(self) -> Triple<'static> {
+    impl IntoTriple for MyTriple {
+        fn into_triple(self) -> Triple {
             Triple::new(
                 Subject::iri(ARIADNEPLUS, self.id.to_string()),
                 Predicate::new(AOCAT, "has_property"),

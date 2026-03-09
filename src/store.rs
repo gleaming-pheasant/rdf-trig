@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::{Result as IoResult, Write};
 
 use crate::graphs::{
@@ -5,8 +6,7 @@ use crate::graphs::{
     Graph,
     GraphId,
     GraphStore,
-    GraphView,
-    InternedGraph
+    GraphView
 };
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
 use crate::namespaces::statics::XSD;
@@ -40,17 +40,17 @@ use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 /// By default, a `DataStore` will be initialised with the [`XSD`] `Namespace` 
 /// already initialised, to allow for the safe use of "literal" nodes.
 #[derive(Debug)]
-pub struct DataStore<'a> {
-    namespaces: NamespaceStore<'a>,
-    graphs: GraphStore<'a>,
-    nodes: NodeStore<'a>,
+pub struct DataStore {
+    namespaces: NamespaceStore,
+    graphs: GraphStore,
+    nodes: NodeStore,
     quads: QuadStore,
     triples: TripleStore
 }
 
-impl<'a> DataStore<'a> {
+impl DataStore {
     /// Create a new [`DataStore`].
-    pub fn new() -> DataStore<'a> {
+    pub fn new() -> DataStore {
         let mut namespaces = NamespaceStore::new();
         namespaces.intern_namespace(XSD);
 
@@ -63,25 +63,52 @@ impl<'a> DataStore<'a> {
         }
     }
 
-    /// Add a [`Graph`] to the collection of `Graph`s in this `DataStore`. Doing 
-    /// so will return a [`GraphId`] which can be used to assign [`Triple`]s to 
-    /// a graph (converting them to [`Quad`]s).
-    pub fn add_graph(&mut self, graph: Graph<'a>) -> GraphId {
+    /// Add a pre-built [`Graph`] to this `DataStore` for assigning [`Triple`]s 
+    /// and [`Quad`]s to.
+    /// 
+    /// This relies on the Graph being already set with a `'static` endpoint.
+    pub fn add_graph(&mut self, graph: Graph) -> GraphId {
         let (ns, ep) = graph.into_parts();
         let ns_id = self.namespaces.intern_namespace(ns);
-        
-        self.graphs.intern_graph(InternedGraph::new(ns_id, ep))
+
+        self.graphs.intern_static_graph(ns_id, ep)
+    }
+
+    /// Add a graph to this datastore by appending the provided endpoint to the 
+    /// provided [`Namespace`] and interning both.
+    /// 
+    /// Use [Self::add_static_graph] if attempting to intern a graph with a 
+    /// 'static endpoint, in order to avoid additional string allocation.
+    /// 
+    /// Failure to do so will not break your application, but will decrease 
+    /// performance.
+    pub fn add_dynamic_graph<'a, C: Into<Cow<'a, str>>>(
+        &mut self, namespace: Namespace, endpoint: C
+    ) -> GraphId {
+        let ns_id = self.namespaces.intern_namespace(namespace);
+
+        self.graphs.intern_borrowed_graph(ns_id, endpoint)
+    }
+
+    /// Add a graph to this datastore by appending the provided 'static endpoint 
+    /// to the provided [`Namespace`] and interning both.
+    pub fn add_static_graph<C: Into<Cow<'static, str>>>(
+        &mut self, namespace: Namespace, endpoint: C
+    ) -> GraphId {
+        let ns_id = self.namespaces.intern_namespace(namespace);
+
+        self.graphs.intern_static_graph(ns_id, endpoint)
     }
 
     /// Add a `Triple` (or implementor of [`IntoTriple`]) to this `DataStore`.
-    pub fn add_triple<T: IntoTriple<'a>>(&mut self, triple: T) {
+    pub fn add_triple<T: IntoTriple>(&mut self, triple: T) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple.into_triple());
         self.intern_triple(InternedTriple::new(sub_id, pred_id, obj_id));
     }
 
     /// Add all of the `Triple`s from an impl [`IntoTriples`] iterator to this 
     /// `DataStore`.
-    pub fn add_triples<T: IntoTriples<'a>>(&mut self, triples: T) {
+    pub fn add_triples<T: IntoTriples>(&mut self, triples: T) {
         for triple in triples.into_triples() {
             self.add_triple(triple);
         }
@@ -89,7 +116,7 @@ impl<'a> DataStore<'a> {
 
     /// Assign the provided `Triple` (or implementor of `Into<Triple>`) to the 
     /// provided `GraphId` and add it to this `DataStore`.
-    pub fn add_triple_to_graph<T: IntoTriple<'a>>(
+    pub fn add_triple_to_graph<T: IntoTriple>(
         &mut self, graph_id: GraphId, triple: T
     ) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(
@@ -103,7 +130,7 @@ impl<'a> DataStore<'a> {
 
     /// Assign the provided `Vec<Triple>` (or implementor of `Into<Vec<Triple>>`) 
     /// to the provided `GraphId` and add them to this `DataStore`.
-    pub fn add_triples_to_graph<T: IntoTriples<'a>>(
+    pub fn add_triples_to_graph<T: IntoTriples>(
         &mut self, graph_id: GraphId, triples: T
     ) {
         for triple in triples.into_triples() {
@@ -116,7 +143,7 @@ impl<'a> DataStore<'a> {
 
     /// Add a pre-built [`Quad`] (with a [`GraphId`] already registered to a 
     /// `Triple`) to this `DataStore`.
-    pub fn add_quad(&mut self, quad: Quad<'a>) {
+    pub fn add_quad(&mut self, quad: Quad) {
         let (graph_id, triple) = quad.into_parts();
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple);
 
@@ -129,7 +156,7 @@ impl<'a> DataStore<'a> {
     pub fn get_full_graph_view(&self, graph_id: GraphId) -> FullGraphView<'_> {
         let mut fgv = FullGraphView::new(self.get_graph_view(graph_id));
 
-        for quad in self.quads.into_iter() {
+        for quad in self.quads.iter() {
                 fgv.add_triple_view(
                     TripleView::new(
                         self.node_id_to_view(quad.subject_id()),
@@ -162,7 +189,7 @@ impl<'a> DataStore<'a> {
     /// Retrieve all `Triple`s contained in this `DataStore` as an iterator over 
     /// [`TripleView`]s.
     pub fn all_triples(&self) -> impl Iterator<Item = TripleView<'_>> {
-        self.triples.into_iter()
+        self.triples.iter()
             .map(|trip| {
                 TripleView::new(
                     self.node_id_to_view(*trip.subject()),
@@ -190,14 +217,14 @@ impl<'a> DataStore<'a> {
     /// Add a [`Namespace`] to the `namespaces` [`NamespaceStore`] returning its 
     /// [`NamespaceId`] (index in the store, cast as u32).
     #[inline]
-    fn intern_namespace(&mut self, namespace: Namespace<'a>) -> NamespaceId {
+    fn intern_namespace(&mut self, namespace: Namespace) -> NamespaceId {
         self.namespaces.intern_namespace(namespace)
     }
 
     /// Add an [`InternedNode`] to the `nodes` [`NodeStore`] returning its 
     /// [`NodeId`] (index in the store, cast as u32).
     #[inline]
-    fn intern_node(&mut self, node: InternedNode<'a>) -> NodeId {
+    fn intern_node(&mut self, node: InternedNode) -> NodeId {
         self.nodes.intern_node(node)
     }
 
@@ -219,7 +246,7 @@ impl<'a> DataStore<'a> {
     /// the `nodes` [`NodeStore`], and return a (`NodeId`, `NodeId`, `NodeId`) 
     /// tuple of the [`NodeId`] for the `subject`, `predicate` and `object`.
     fn intern_nodes_from_triple(
-        &mut self, triple: Triple<'a>
+        &mut self, triple: Triple
     ) -> (NodeId, NodeId, NodeId) {
         let (subject, predicate, object) = triple.into_parts();
         
@@ -256,7 +283,7 @@ impl<'a> DataStore<'a> {
     }
 }
 
-impl<'a> WriteTriG for DataStore<'a> {
+impl<'a> WriteTriG for DataStore {
     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
         self.namespaces.write_trig(writer)?;
         writer.write_all(b"\n")?;

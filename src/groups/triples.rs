@@ -9,36 +9,36 @@ use crate::traits::{IntoTriple, WriteTriG};
 use super::Quad;
 
 #[derive(Debug)]
-pub struct Triple<'a> {
-    subject: Subject<'a>,
-    predicate: Predicate<'a>,
-    object: Object<'a>
+pub struct Triple {
+    subject: Subject,
+    predicate: Predicate,
+    object: Object
 }
 
-impl<'a> Triple<'a> {
+impl Triple {
     /// Create a new [`Triple`] from parts.
     pub fn new(
-        subject: Subject<'a>, predicate: Predicate<'a>, object: Object<'a>
-    ) -> Triple<'a> {
+        subject: Subject, predicate: Predicate, object: Object
+    ) -> Triple {
         Triple { subject, predicate, object }
     }
 
     /// Convert this `Triple` into a [`Quad`] by assigning it with the provided 
     /// [`GraphId`].
-    pub fn into_quad(self, graph: GraphId) -> Quad<'a> {
+    pub fn into_quad(self, graph: GraphId) -> Quad {
         Quad::new(graph, self)
     }
 
     /// Consume this `Triple`, returning a tuple of the contained ([`Subject`], 
     /// [`Predicate`] and [`Object`])
-    pub fn into_parts(self) -> (Subject<'a>, Predicate<'a>, Object<'a>) {
+    pub fn into_parts(self) -> (Subject, Predicate, Object) {
         (self.subject, self.predicate, self.object)
     }
 }
 
-impl<'a> IntoTriple<'a> for Triple<'a> {
+impl IntoTriple for Triple {
     #[inline(always)]
-    fn into_triple(self) -> Triple<'a> {
+    fn into_triple(self) -> Triple {
         self
     }
 }
@@ -98,13 +98,11 @@ impl TripleStore {
     }
 }
 
-impl<'a> IntoIterator for &'a TripleStore {
-    type Item = &'a InternedTriple;
-    type IntoIter = indexmap::set::Iter<'a, InternedTriple>;
+impl Deref for TripleStore {
+    type Target = FastIndexSet<InternedTriple>;
 
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        self.store.iter()
+    fn deref(&self) -> &Self::Target {
+        &self.store
     }
 }
 
