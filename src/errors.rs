@@ -1,7 +1,7 @@
 //! Contains errors that can be returned by verifying types.
 use std::borrow::Cow;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum RdfTrigError<'a> {
     InvalidBoolean(Cow<'a, str>),
     InvalidDateTime(Cow<'a, str>),

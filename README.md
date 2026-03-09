@@ -75,12 +75,12 @@ number of times, it makes sense to use statics and intern everything in order to
 make parsing large graphs feasible.
 
 ## `Cow`s, everywhere...
-For all `str` types, this crate defines a `Cow<'static, str>`, and constructor 
-methods assign parameters with the dynamic `Into<Cow<'static, str>>` type.
+For all `str` types, this crate defines a `Cow<'a, str>`, and constructor 
+methods assign parameters with the dynamic `Into<Cow<'a, str>>` type.
 
 This is to improve performance and decrease memory consumption when using RDF 
 "nodes" which are known at compile time; `&'static str` references can be used 
-in place of .
+in place of dynamically defined `String`s.
 
 Despite the propaganda, RDF isn't actually "machine understandable", so 
 hardcoding namespaces and iris is very common practice (see the de-facto 
