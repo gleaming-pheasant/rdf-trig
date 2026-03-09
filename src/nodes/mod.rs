@@ -22,23 +22,23 @@ use raw::{BlankNode, IriNode, LiteralNode, InternedNode};
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug)]
-pub enum Subject {
-    Blank(BlankNode),
-    Iri(IriNode)
+pub enum Subject<'a> {
+    Blank(BlankNode<'a>),
+    Iri(IriNode<'a>)
 }
 
-impl Subject {
+impl<'a> Subject<'a> {
     /// Create a new `Subject::Blank` node, with `id` being the identifier for 
     /// the blank resource.
-    pub fn blank<C: Into<Cow<'static, str>>>(id: C) -> Subject {
+    pub fn blank<C: Into<Cow<'a, str>>>(id: C) -> Subject<'a> {
         Subject::Blank(BlankNode::new(id))
     }
 
     /// Create a new `Subject::Iri` node with a given [`Namespace`] and 
     /// `endpoint` [str].
-    pub fn iri<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Subject {
+    pub fn iri<C: Into<Cow<'a, str>>>(
+        namespace: Namespace<'a>, endpoint: C
+    ) -> Subject<'a> {
         Subject::Iri(IriNode::new(namespace, endpoint))
     }
     
@@ -48,11 +48,11 @@ impl Subject {
     /// is invalid.
     pub fn iri_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Result<Subject, RdfTrigError>
+    ) -> Result<Subject<'a>, RdfTrigError<'a>>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>,
+        C: Into<Cow<'a, str>>
     {
         Ok(Subject::Iri(
             IriNode::new_with_new_namespace(prefix, iri, endpoint)?
@@ -70,16 +70,16 @@ impl Subject {
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug)]
-pub struct Predicate {
-    iri: IriNode
+pub struct Predicate<'a> {
+    iri: IriNode<'a>
 }
 
-impl Predicate {
+impl<'a> Predicate<'a> {
     /// Create a new `Predicate`, with a pre-built [`Namespace`] and an 
     /// `endpoint` [str].
-    pub fn new<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Predicate {
+    pub fn new<C: Into<Cow<'a, str>>>(
+        namespace: Namespace<'a>, endpoint: C
+    ) -> Predicate<'a> {
         Predicate {
             iri: IriNode::new(namespace, endpoint)
         }
@@ -92,11 +92,11 @@ impl Predicate {
     /// is invalid.
     pub fn new_with_new_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Result<Predicate, RdfTrigError>
+    ) -> Result<Predicate<'a>, RdfTrigError<'a>>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>,
+        C: Into<Cow<'a, str>>
     {
         Ok(Predicate {
             iri: IriNode::new_with_new_namespace(prefix, iri, endpoint)?
@@ -105,7 +105,7 @@ impl Predicate {
 
     /// Consume this `Predicate`, returning the contained [`Namespace`] and 
     /// `endpoint`.
-    pub fn into_parts(self) -> (Namespace, Cow<'static, str>) {
+    pub fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
         self.iri.into_parts()
     }
 
@@ -113,7 +113,9 @@ impl Predicate {
     /// known at compile time.
     /// 
     /// Useful if you know a Predicate will be regularly used.
-    pub const fn new_const(namespace: Namespace, endpoint: &'static str) -> Predicate {
+    pub const fn new_const(
+        namespace: Namespace<'static>, endpoint: &'static str
+    ) -> Predicate<'a> {
         Predicate { iri: IriNode::new_const(namespace, endpoint) }
     }
 }
@@ -128,24 +130,24 @@ impl Predicate {
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug)]
-pub enum Object {
-    Blank(BlankNode),
-    Iri(IriNode),
-    Literal(LiteralNode)
+pub enum Object<'a> {
+    Blank(BlankNode<'a>),
+    Iri(IriNode<'a>),
+    Literal(LiteralNode<'a>)
 }
 
-impl Object {
+impl<'a> Object<'a> {
     /// Create a new `Object::Blank` with the provided `id` as the name of the 
     /// blank resource.
-    pub fn blank<C: Into<Cow<'static, str>>>(id: C) -> Object {
+    pub fn blank<C: Into<Cow<'a, str>>>(id: C) -> Object<'a> {
         Object::Blank(BlankNode::new(id))
     }
 
     /// Create a new `Object::Iri` from a provided [`Namespace`] and `endpoint` 
     /// [str].
-    pub fn iri<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Object {
+    pub fn iri<C: Into<Cow<'a, str>>>(
+        namespace: Namespace<'a>, endpoint: C
+    ) -> Object<'a> {
         Object::Iri(IriNode::new(namespace, endpoint))
     }
 
@@ -156,11 +158,11 @@ impl Object {
     /// is invalid.
     pub fn iri_with_namespace<P, I, C>(
         prefix: P, iri: I, endpoint: C
-    ) -> Result<Object, RdfTrigError>
+    ) -> Result<Object<'a>, RdfTrigError<'a>>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>,
+        C: Into<Cow<'a, str>>
     {
         Ok(Object::Iri(
             IriNode::new_with_new_namespace(prefix, iri, endpoint)?
@@ -174,28 +176,28 @@ impl Object {
     /// not a valid ISO-639 language code.
     pub fn string<L, C>(
         language: Option<L>, value: C
-    )-> Result<Object, RdfTrigError>
+    )-> Result<Object<'a>, RdfTrigError<'a>>
     where
-        L: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
+        L: Into<Cow<'a, str>>,
+        C: Into<Cow<'a, str>>
     {
         Ok(Object::Literal(LiteralNode::string(language, value)?))
     }
 
     /// Create a new `Object::Literal` string type with the `language` tag set 
     /// to "en".
-    pub fn string_en<C: Into<Cow<'static, str>>>(value: C) -> Object {
+    pub fn string_en<C: Into<Cow<'a, str>>>(value: C) -> Object<'a> {
         Object::Literal(LiteralNode::string_en(value))
     }
 
     /// Create a new `Object::Literal` string type with the `language` set to 
     /// `None`.
-    pub fn string_no_lang<C: Into<Cow<'static, str>>>(value: C) -> Object {
+    pub fn string_no_lang<C: Into<Cow<'a, str>>>(value: C) -> Object<'a> {
         Object::Literal(LiteralNode::string_no_lang(value))
     }
 
     /// Create a new `Object::Literal` boolean type from a Rust native [`bool`].
-    pub fn boolean_from_native(value: bool) -> Object {
+    pub fn boolean_from_native(value: bool) -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -203,8 +205,8 @@ impl Object {
     /// 
     /// Returns an `RdfTrigError::InvalidBoolean` if the provided `value` is not 
     /// "true", "false", "1" or "0".
-    pub fn boolean_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
+    pub fn boolean_from_str<C: Into<Cow<'a, str>>>(value: C)
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::boolean(value)?))
     }
 
@@ -215,8 +217,8 @@ impl Object {
     /// 
     /// This is an awkward non-ISO specification, but allows datetimes both with 
     /// or without timezone identifiers.
-    pub fn datetime<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
+    pub fn datetime<C: Into<Cow<'a, str>>>(value: C)
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::datetime(value)?))
     }
     
@@ -227,7 +229,7 @@ impl Object {
     /// `Object::Literal`, but fails if the provided value would return a 
     /// [`time::error::Format`].
     pub fn datetime_from_time_primitive(value: time::PrimitiveDateTime)
-    -> Result<Object, RdfTrigError> {
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::try_from(value)?))
     }
 
@@ -238,7 +240,7 @@ impl Object {
     /// `Object::Literal`, but fails if the provided value would return a 
     /// [`time::error::Format`].
     pub fn datetime_from_time_offset(value: time::OffsetDateTime)
-    -> Result<Object, RdfTrigError> {
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::try_from(value)?))
     }
 
@@ -248,7 +250,7 @@ impl Object {
     /// Converts the provided [`chrono::NaiveDateTime`] into an 
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_naive(value: chrono::NaiveDateTime)
-    -> Object {
+    -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -258,7 +260,7 @@ impl Object {
     /// Converts the provided [`chrono::DateTime<Utc>`] into an 
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_utc(value: chrono::DateTime<chrono::Utc>)
-    -> Object {
+    -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -268,7 +270,7 @@ impl Object {
     /// Converts the provided [`chrono::DateTime<Local>`] into an 
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_local(value: chrono::DateTime<chrono::Local>)
-    -> Object {
+    -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -278,7 +280,7 @@ impl Object {
     /// Converts the provided [`chrono::DateTime<FixedOffset>`] into an 
     /// `Object::Literal` of type `DateTime`.
     pub fn datetime_from_chrono_offset(value: chrono::DateTime<chrono::FixedOffset>)
-    -> Object {
+    -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -286,13 +288,13 @@ impl Object {
     /// 
     /// Returns an `RdfTrigError::InvalidDecimal` if the provided `value` cannot 
     /// be parsed as an f32.
-    pub fn decimal_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
+    pub fn decimal_from_str<C: Into<Cow<'a, str>>>(value: C)
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::decimal(value)?))
     }
 
     /// Create a new `Object::Literal` decimal type from the provided [`f32`].
-    pub fn decimal_from_native(value: f32) -> Object {
+    pub fn decimal_from_native(value: f32) -> Object<'a> {
         Object::Literal(LiteralNode::from(value))
     }
 
@@ -303,15 +305,15 @@ impl Object {
     /// 4 digits after an optional `-` sign and can have a timezone declaration).
     /// 
     /// Prioritise calling [`LiteralNode::gyear_from_i32`].
-    pub fn gyear_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
+    pub fn gyear_from_str<C: Into<Cow<'a, str>>>(value: C)
+    -> Result<Object<'a>, RdfTrigError<'a>> {
         Ok(Object::Literal(LiteralNode::gyear(value)?))
     }
 
     /// Create a new `Object::Literal` gYear from an [`i32`].
     /// 
     /// This will be stored as a valid, zero-padded gYear.
-    pub fn gyear_from_i32(value: i32) -> Object {
+    pub fn gyear_from_i32(value: i32) -> Object<'a> {
         Object::Literal(LiteralNode::gyear_from_i32(value))
     }
 }
@@ -337,24 +339,24 @@ impl Deref for NodeId {
 /// A wrapper around an [`IndexSet<InternedNode>`] which serves to store unique 
 /// "nodes" and hand out [`NodeId`]s as references to the [`InternedNode`]s.
 #[derive(Debug)]
-pub(crate) struct NodeStore {
-    store: FastIndexSet<InternedNode>
+pub(crate) struct NodeStore<'a> {
+    store: FastIndexSet<InternedNode<'a>>
 }
 
-impl NodeStore {
+impl<'a> NodeStore<'a> {
     /// Create a new [`NodeStore`].
-    pub(crate) fn new() -> NodeStore {
+    pub(crate) fn new() -> NodeStore<'a> {
         NodeStore { store: FastIndexSet::default() }
     }
 
     /// Add an `InternedNode` to this `NodeStore`, returning a `NodeId` (a 
     /// wrapped `IndexSet` index cast as u32).
-    pub(crate) fn intern_node(&mut self, node: InternedNode) -> NodeId {
+    pub(crate) fn intern_node(&mut self, node: InternedNode<'a>) -> NodeId {
         NodeId::from(self.store.insert_full(node).0)
     }
 
     /// Retrieve an `InternedNode` from the provided `NodeId`.
-    pub(crate) fn query_node(&self, node_id: NodeId) -> &InternedNode {
+    pub(crate) fn query_node(&self, node_id: NodeId) -> &InternedNode<'a> {
         self.store.get_index(*node_id as usize).unwrap()
     }
 }
@@ -367,13 +369,13 @@ impl NodeStore {
 /// ("{namespace_prefix}:{endpoint}") for display in TriG format.
 #[derive(Debug)]
 pub struct IriNodeView<'a> {
-    namespace: &'a Namespace,
+    namespace: &'a Namespace<'a>,
     endpoint: &'a str
 }
 
 impl<'a> IriNodeView<'a> {
     pub(crate) fn new(
-        namespace: &'a Namespace, endpoint: &'a str
+        namespace: &'a Namespace<'a>, endpoint: &'a str
     ) -> IriNodeView<'a> {
         IriNodeView { namespace, endpoint }
     }
@@ -397,9 +399,9 @@ impl<'a> WriteTriG for IriNodeView<'a> {
 /// format.
 #[derive(Debug)]
 pub enum NodeView<'a> {
-    Blank(&'a BlankNode),
+    Blank(&'a BlankNode<'a>),
     Iri(IriNodeView<'a>),
-    Literal(&'a LiteralNode)
+    Literal(&'a LiteralNode<'a>)
 }
 
 impl<'a> WriteTriG for NodeView<'a> {

@@ -23,14 +23,14 @@ impl<'a, T: WriteTriG + ?Sized> WriteTriG for &'a T {
 }
 
 /// A trait for converting self into a single [`Triple`]s.
-pub trait IntoTriple {
+pub trait IntoTriple<'a> {
     /// Convert `self` into a `Triple`.
-    fn into_triple(self) -> Triple;
+    fn into_triple(self) -> Triple<'a>;
 }
 
 /// A trait for converting self to an iterator over [`Triple`]s.
-pub trait IntoTriples {
-    type Iter: Iterator<Item = Triple>;
+pub trait IntoTriples<'a> {
+    type Iter: Iterator<Item = Triple<'a>>;
 
     /// Convert `self` into a [`Iterator<Item = Triple>`].
     fn into_triples(self) -> Self::Iter;
