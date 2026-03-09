@@ -11,6 +11,7 @@ use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// A wrapper around an [`IndexSet<InternedGraph>`] which acts as a fast store 
 /// for unique [`Graph`] values.
+#[derive(Debug)]
 pub(crate) struct GraphStore<'a> {
     store: FastIndexSet<InternedGraph<'a>>
 }

@@ -79,6 +79,7 @@ impl InternedTriple {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct TripleStore {
     store: FastIndexSet<InternedTriple>
 }

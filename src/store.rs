@@ -39,6 +39,7 @@ use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 /// 
 /// By default, a `DataStore` will be initialised with the [`XSD`] `Namespace` 
 /// already initialised, to allow for the safe use of "literal" nodes.
+#[derive(Debug)]
 pub struct DataStore<'a> {
     namespaces: NamespaceStore<'a>,
     graphs: GraphStore<'a>,
