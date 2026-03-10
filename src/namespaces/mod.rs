@@ -10,7 +10,6 @@ use crate::errors::RdfTrigError;
 use crate::traits::WriteTriG;
 use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
-pub mod predicates;
 pub mod statics;
 
 /// A `Namespace` is a mapping between a `prefix` and an `iri`.
@@ -18,20 +17,20 @@ pub mod statics;
 /// See [`crate`] documentation for details on this crates relationship with 
 /// IRIs.
 #[derive(Debug)]
-pub struct Namespace {
-    prefix: Cow<'static, str>,
-    iri: Cow<'static, str>
+pub struct Namespace<'a> {
+    prefix: Cow<'a, str>,
+    iri: Cow<'a, str>
 }
 
-impl Namespace {
+impl<'a> Namespace<'a> {
     /// Create a new [`Namespace`].
     /// 
     /// Returns a `RdfTrigError::InvalidIri` if the `iri` cannot be parsed as a 
     /// url.
-    pub fn new<P, I>(prefix: P, iri: I) -> Result<Namespace, RdfTrigError>
+    pub fn new<P, I>(prefix: P, iri: I) -> Result<Namespace<'a>, RdfTrigError>
     where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>
+        P: Into<Cow<'a, str>>,
+        I: Into<Cow<'a, str>>
     {
         let iri = iri.into();
         
@@ -52,7 +51,7 @@ impl Namespace {
     /// `iri`.
     pub(crate) const fn new_const(
         prefix: &'static str, iri: &'static str
-    ) -> Namespace {
+    ) -> Namespace<'static> {
         Namespace {
             prefix: Cow::Borrowed(prefix),
             iri: Cow::Borrowed(iri)
@@ -61,7 +60,7 @@ impl Namespace {
 
     /// Return a `(Cow<'static, str>, Cow<'static, str>)` containing this 
     /// `Namespace`'s `prefix` and `iri`.
-    pub fn into_parts(self) -> (Cow<'static, str>, Cow<'static, str>) {
+    pub fn into_parts(self) -> (Cow<'a, str>, Cow<'a, str>) {
         (self.prefix, self.iri)
     }
 
@@ -84,13 +83,13 @@ impl Namespace {
     }
 }
 
-impl Hash for Namespace {
+impl Hash for Namespace<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.iri.hash(state);
     }
 }
 
-impl PartialEq for Namespace {
+impl PartialEq for Namespace<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.iri == other.iri
     }
@@ -100,10 +99,10 @@ impl PartialEq for Namespace {
     }
 }
 
-impl Eq for Namespace {}
+impl Eq for Namespace<'_> {}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct NamespaceId(u32);
+pub(crate) struct NamespaceId(pub(crate) u32);
 
 impl NamespaceId {
     pub(crate) fn from(ix: usize) -> NamespaceId {
@@ -138,7 +137,7 @@ impl Deref for NamespaceId {
 /// append an incrementing number to the end of the prefix.
 #[derive(Debug)]
 pub(crate) struct NamespaceStore {
-    store: FastIndexSet<Namespace>
+    store: FastIndexSet<Namespace<'_>>
 }
 
 impl NamespaceStore {

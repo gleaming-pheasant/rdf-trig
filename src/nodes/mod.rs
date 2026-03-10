@@ -1,422 +1,427 @@
-use std::borrow::Cow;
-use std::io::{Result as IoResult, Write};
-use std::ops::Deref;
+mod object;
+mod predicate;
+mod subject;
+mod store;
+mod raw;
 
-use crate::FastIndexSet;
-use crate::errors::RdfTrigError;
-use crate::namespaces::Namespace;
-use crate::traits::WriteTriG;
-use crate::utils::{write_escaped_local_name, write_escaped_url_component};
+pub use object::Object;
+pub use predicate::Predicate;
+pub use raw::{BlankNode, IriNode, LiteralNode};
+pub use raw::literals::{
+    BooleanLiteral,
+    DateTimeLiteral,
+    DecimalLiteral,
+    GYearLiteral,
+    LangStringLiteral
+};
+pub use subject::Subject;
+pub use store::NodeStore;
 
-pub mod raw;
-
-use raw::{BlankNode, IriNode, LiteralNode, InternedNode};
-
-
-/// A `Subject` is an enumerator over the two valid RDF "node" types for 
-/// subjects; blank nodes, and IRI nodes.
-/// 
-/// As with [`Graph`](crate::graphs::Graph)s, a `Subject::Iri` is a combination 
-/// of a [`Namespace`] and an `endpoint`.
-/// 
-/// See [`crate`] documentation for details on this crates relationship with 
-/// IRIs.
-#[derive(Debug)]
-pub enum Subject {
-    Blank(BlankNode),
-    Iri(IriNode)
-}
-
-impl Subject {
-    /// Create a new `Subject::Blank` node, with `id` being the identifier for 
-    /// the blank resource.
-    pub fn blank<C: Into<Cow<'static, str>>>(id: C) -> Subject {
-        Subject::Blank(BlankNode::new(id))
-    }
-
-    /// Create a new `Subject::Iri` node with a given [`Namespace`] and 
-    /// `endpoint` [str].
-    pub fn iri<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Subject {
-        Subject::Iri(IriNode::new(namespace, endpoint))
-    }
-    
-    /// Create a new `Subject::Iri` node, simultaneously declaring a new 
-    /// [`Namespace`] from `prefix` and `iri` [str] values.
-    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
-    /// is invalid.
-    pub fn iri_with_new_namespace<P, I, C>(
-        prefix: P, iri: I, endpoint: C
-    ) -> Result<Subject, RdfTrigError>
-    where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
-    {
-        Ok(Subject::Iri(
-            IriNode::new_with_new_namespace(prefix, iri, endpoint)?
-        ))
-    }
-}
-
-
-/// A `Predicate` is simply a wrapper around an [`IriNode`], as this is the only 
-/// valid RDF resource type for a predicate.
-/// 
-/// As with [`Graph`](crate::graphs::Graph)s, a `Predicate` is a combination 
-/// of a [`Namespace`] and an `endpoint`.
-/// 
-/// See [`crate`] documentation for details on this crates relationship with 
-/// IRIs.
-#[derive(Debug)]
-pub struct Predicate {
-    iri: IriNode
-}
-
-impl Predicate {
-    /// Create a new `Predicate`, with a pre-built [`Namespace`] and an 
-    /// `endpoint` [str].
-    pub fn new<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Predicate {
-        Predicate {
-            iri: IriNode::new(namespace, endpoint)
-        }
-    }
-
-    /// Create a new `Predicate` and simultaneously build a new [`Namespace`] 
-    /// from provided `prefix` and `iri` [str]s.
-    /// 
-    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
-    /// is invalid.
-    pub fn new_with_new_namespace<P, I, C>(
-        prefix: P, iri: I, endpoint: C
-    ) -> Result<Predicate, RdfTrigError>
-    where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
-    {
-        Ok(Predicate {
-            iri: IriNode::new_with_new_namespace(prefix, iri, endpoint)?
-        })
-    }
-
-    /// Consume this `Predicate`, returning the contained [`Namespace`] and 
-    /// `endpoint`.
-    pub fn into_parts(self) -> (Namespace, Cow<'static, str>) {
-        self.iri.into_parts()
-    }
-
-    /// Allows you to declare a `Predicate` using a `Namespace` and endpoint 
-    /// known at compile time.
-    /// 
-    /// Useful if you know a Predicate will be regularly used.
-    pub const fn new_const(
-        namespace: Namespace, endpoint: &'static str
-    ) -> Predicate {
-        Predicate { iri: IriNode::new_const(namespace, endpoint) }
-    }
-}
-
-
-/// An `Object` provides wrappers around the three main RDF node types: blank 
-/// nodes, iri nodes and literal nodes.
-/// 
-/// As with [`Graph`](crate::graphs::Graph)s, an `Object::Iri` is a combination 
-/// of a [`Namespace`] and an `endpoint`.
-/// 
-/// See [`crate`] documentation for details on this crates relationship with 
-/// IRIs.
-#[derive(Debug)]
-pub enum Object {
-    Blank(BlankNode),
-    Iri(IriNode),
-    Literal(LiteralNode)
-}
-
-impl Object {
-    /// Create a new `Object::Blank` with the provided `id` as the name of the 
-    /// blank resource.
-    pub fn blank<C: Into<Cow<'static, str>>>(id: C) -> Object {
-        Object::Blank(BlankNode::new(id))
-    }
-
-    /// Create a new `Object::Iri` from a provided [`Namespace`] and `endpoint` 
-    /// [str].
-    pub fn iri<C: Into<Cow<'static, str>>>(
-        namespace: Namespace, endpoint: C
-    ) -> Object {
-        Object::Iri(IriNode::new(namespace, endpoint))
-    }
-
-    /// Create a new `Object::Iri` and simultaneously create a new [`Namespace`] 
-    /// from the provided `prefix` and `iri` [str]s.
-    /// 
-    /// Returns a [`RdfTrigError::InvalidIri`] if the `iri` for the `Namespace` 
-    /// is invalid.
-    pub fn iri_with_namespace<P, I, C>(
-        prefix: P, iri: I, endpoint: C
-    ) -> Result<Object, RdfTrigError>
-    where
-        P: Into<Cow<'static, str>>,
-        I: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
-    {
-        Ok(Object::Iri(
-            IriNode::new_with_new_namespace(prefix, iri, endpoint)?
-        ))
-    }
-
-    /// Create a new `Object::Literal` string type with the provided `language` 
-    /// and `value`.
-    /// 
-    /// Returns an `RdfTrigError::InvalidLanguage` if the provided `language` is 
-    /// not a valid ISO-639 language code.
-    pub fn string<L, C>(
-        language: Option<L>, value: C
-    )-> Result<Object, RdfTrigError>
-    where
-        L: Into<Cow<'static, str>>,
-        C: Into<Cow<'static, str>>
-    {
-        Ok(Object::Literal(LiteralNode::string(language, value)?))
-    }
-
-    /// Create a new `Object::Literal` string type with the `language` tag set 
-    /// to "en".
-    pub fn string_en<C: Into<Cow<'static, str>>>(value: C) -> Object {
-        Object::Literal(LiteralNode::string_en(value))
-    }
-
-    /// Create a new `Object::Literal` string type with the `language` set to 
-    /// `None`.
-    pub fn string_no_lang<C: Into<Cow<'static, str>>>(value: C) -> Object {
-        Object::Literal(LiteralNode::string_no_lang(value))
-    }
-
-    /// Create a new `Object::Literal` boolean type from a Rust native [`bool`].
-    pub fn boolean_from_native(value: bool) -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    /// Create a new `Object::Literal` boolean type from the given `value`.
-    /// 
-    /// Returns an `RdfTrigError::InvalidBoolean` if the provided `value` is not 
-    /// "true", "false", "1" or "0".
-    pub fn boolean_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::boolean(value)?))
-    }
-
-    /// Create a new `Object::Literal` datetime type from the given `value`.
-    /// 
-    /// Returns an `RdfTrigError::InvalidDateTime` if the provided `value` 
-    /// cannot be parsed as an XML Schema dateTime.
-    /// 
-    /// This is an awkward non-ISO specification, but allows datetimes both with 
-    /// or without timezone identifiers.
-    pub fn datetime<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::datetime(value)?))
-    }
-    
-    #[cfg(feature = "time")]
-    /// Only on the `time` feature.
-    /// 
-    /// Converts the provided [`time::PrimitiveDateTime`] into an 
-    /// `Object::Literal`, but fails if the provided value would return a 
-    /// [`time::error::Format`].
-    pub fn datetime_from_time_primitive(value: time::PrimitiveDateTime)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::try_from(value)?))
-    }
-
-    #[cfg(feature = "time")]
-    /// Only on the `time` feature.
-    /// 
-    /// Converts the provided [`time::OffsetDateTime`] into an 
-    /// `Object::Literal`, but fails if the provided value would return a 
-    /// [`time::error::Format`].
-    pub fn datetime_from_time_offset(value: time::OffsetDateTime)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::try_from(value)?))
-    }
-
-    #[cfg(feature = "chrono")]
-    /// Only on the `chrono` feature.
-    /// 
-    /// Converts the provided [`chrono::NaiveDateTime`] into an 
-    /// `Object::Literal` of type `DateTime`.
-    pub fn datetime_from_chrono_naive(value: chrono::NaiveDateTime)
-    -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    #[cfg(feature = "chrono")]
-    /// Only on the `chrono` feature.
-    /// 
-    /// Converts the provided [`chrono::DateTime<Utc>`] into an 
-    /// `Object::Literal` of type `DateTime`.
-    pub fn datetime_from_chrono_utc(value: chrono::DateTime<chrono::Utc>)
-    -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    #[cfg(feature = "chrono")]
-    /// Only on the `chrono` feature.
-    /// 
-    /// Converts the provided [`chrono::DateTime<Local>`] into an 
-    /// `Object::Literal` of type `DateTime`.
-    pub fn datetime_from_chrono_local(value: chrono::DateTime<chrono::Local>)
-    -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    #[cfg(feature = "chrono")]
-    /// Only on the `chrono` feature.
-    /// 
-    /// Converts the provided [`chrono::DateTime<FixedOffset>`] into an 
-    /// `Object::Literal` of type `DateTime`.
-    pub fn datetime_from_chrono_offset(value: chrono::DateTime<chrono::FixedOffset>)
-    -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    /// Create a new `Object::Literal` decimal type from the given `value`.
-    /// 
-    /// Returns an `RdfTrigError::InvalidDecimal` if the provided `value` cannot 
-    /// be parsed as an f32.
-    pub fn decimal_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::decimal(value)?))
-    }
-
-    /// Create a new `Object::Literal` decimal type from the provided [`f32`].
-    pub fn decimal_from_native(value: f32) -> Object {
-        Object::Literal(LiteralNode::from(value))
-    }
-
-    /// Create a new `Object::Literal` gYear type from the given `value`.
-    /// 
-    /// Returns an `RdfTrigError::InvalidGYear` if the provided `value` is not 
-    /// in an XML Schema gYear format (it must be padded with 0s to be at least 
-    /// 4 digits after an optional `-` sign and can have a timezone declaration).
-    /// 
-    /// Prioritise calling [`LiteralNode::gyear_from_i32`].
-    pub fn gyear_from_str<C: Into<Cow<'static, str>>>(value: C)
-    -> Result<Object, RdfTrigError> {
-        Ok(Object::Literal(LiteralNode::gyear(value)?))
-    }
-
-    /// Create a new `Object::Literal` gYear from an [`i32`].
-    /// 
-    /// This will be stored as a valid, zero-padded gYear.
-    pub fn gyear_from_i32(value: i32) -> Object {
-        Object::Literal(LiteralNode::gyear_from_i32(value))
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct NodeId(u32);
-
-impl NodeId {
-    pub(crate) fn from(ix: usize) -> NodeId {
-        debug_assert!(ix <= u32::MAX as usize);
-        NodeId(ix as u32)
-    }
-}
-
-impl Deref for NodeId {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// A wrapper around an [`IndexSet<InternedNode>`] which serves to store unique 
-/// "nodes" and hand out [`NodeId`]s as references to the [`InternedNode`]s.
-#[derive(Debug)]
-pub(crate) struct NodeStore {
-    store: FastIndexSet<InternedNode>
-}
-
-impl NodeStore {
-    /// Create a new [`NodeStore`].
-    pub(crate) fn new() -> NodeStore {
-        NodeStore { store: FastIndexSet::default() }
-    }
-
-    /// Add an `InternedNode` to this `NodeStore`, returning a `NodeId` (a 
-    /// wrapped `IndexSet` index cast as u32).
-    pub(crate) fn intern_node(&mut self, node: InternedNode) -> NodeId {
-        NodeId::from(self.store.insert_full(node).0)
-    }
-
-    /// Retrieve an `InternedNode` from the provided `NodeId`.
-    pub(crate) fn query_node(&self, node_id: NodeId) -> &InternedNode {
-        self.store.get_index(*node_id as usize).unwrap()
-    }
-}
-
-/// `IriNodeView` contains references to an [`IriNode`]'s interned [`Namespace`] 
-/// and its `endpoint` and, like other `...View` structs in this crate, is 
-/// useful for representing interned data.
-/// 
-/// `IriNodeView` implements [`WriteTriG`] for writing the shortform IRI 
-/// ("{namespace_prefix}:{endpoint}") for display in TriG format.
-#[derive(Debug)]
-pub struct IriNodeView<'a> {
-    namespace: &'a Namespace,
-    endpoint: &'a str
-}
-
-impl<'a> IriNodeView<'a> {
-    pub(crate) fn new(
-        namespace: &'a Namespace, endpoint: &'a str
-    ) -> IriNodeView<'a> {
-        IriNodeView { namespace, endpoint }
-    }
-}
-
-
-impl<'a> WriteTriG for IriNodeView<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        write_escaped_local_name(writer, self.namespace.prefix())?;
-        writer.write_all(b":")?;
-        write_escaped_url_component(writer, self.endpoint)?;
-        Ok(())
-    }
-}
-
-/// A `NodeView` is a reference to an expanded "node". [`BlankNode`]s and 
-/// [`LiteralNode`]s remain just references, while an [`IriNode`] becomes an 
-/// [`IriNodeView`] (containing a reference to an interned [`Namespace`]).
-/// 
-/// `NodeView` implements [`WriteTriG`] for outputting the "node" in TriG 
-/// format.
-#[derive(Debug)]
-pub enum NodeView<'a> {
-    Blank(&'a BlankNode),
-    Iri(IriNodeView<'a>),
-    Literal(&'a LiteralNode)
-}
-
-impl<'a> WriteTriG for NodeView<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        match self {
-            NodeView::Blank(blank) => blank.write_trig(writer),
-            NodeView::Iri(iri) => iri.write_trig(writer),
-            NodeView::Literal(literal) => literal.write_trig(writer)
-        }
-    }
+/// An enumerator over the three node types used in RDF: blank, IRI and literal.
+pub(crate) enum Node<'a> {
+    Blank(BlankNode<'a>),
+    Iri(IriNode<'a>),
+    Literal(LiteralNode<'a>)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Subject;
+    use super::*;
+    use crate::traits::WriteTriG;
+
+
+    #[test]
+    fn test_true_bool_from_string() {
+        let good_true_one = "true";
+        assert!(LiteralNode::boolean(good_true_one).is_ok());
+    }
+
+    #[test]
+    fn test_true_bool_from_number() {
+        let good_true_two = String::from("1");
+        assert!(LiteralNode::boolean(good_true_two).is_ok());
+    }
+
+    #[test]
+    fn test_bad_true_bool() {
+        let bad_true_one = String::from("True");
+        assert!(LiteralNode::boolean(bad_true_one).is_err());
+    }
+
+    #[test]
+    fn test_invalid_string_bool() {
+        let bad_true_two = "A completely random str.";
+        assert!(LiteralNode::boolean(bad_true_two).is_err());
+    }
+
+    #[test]
+    fn test_true_bool_from_native() {
+        let raw_true = true;
+        let raw_true_built = LiteralNode::from(raw_true);
+        assert_eq!(raw_true_built, LiteralNode::Boolean(true));
+    }
+
+    #[test]
+    fn test_true_write_trig() {
+        let raw_true = LiteralNode::Boolean(true);
+
+        let mut buf: Vec<u8> = vec![];
+        raw_true.write_trig(&mut buf).unwrap();
+
+        let as_string = String::from_utf8(buf).unwrap();
+        assert_eq!(as_string, String::from("true"));
+    }
+
+    #[test]
+    fn test_false_bool_from_string() {
+        let good_false_one = "false";
+        assert!(LiteralNode::boolean(good_false_one).is_ok());
+    }
+
+    #[test]
+    fn test_false_bool_from_number_string() {
+        let good_false_two = String::from("0");
+        assert!(LiteralNode::boolean(good_false_two).is_ok());
+    }
+
+    #[test]
+    fn test_false_bool_from_native() {
+        let raw_false = false;
+        let raw_false_built = LiteralNode::from(raw_false);
+        assert_eq!(raw_false_built, LiteralNode::Boolean(false));
+    }
+
+    #[test]
+    fn test_false_write_trig() {
+        let raw_false = LiteralNode::Boolean(false);
+
+        let mut buf: Vec<u8> = vec![];
+        raw_false.write_trig(&mut buf).unwrap();
+
+        let as_string = String::from_utf8(buf).unwrap();
+        assert_eq!(as_string, String::from("false"));
+    }
+
+    #[test]
+    fn test_datetime_from_utc_string() {
+        assert!(LiteralNode::datetime(
+            // String to test Into<Cow<...>> also.
+            String::from("2026-03-02T09:00:00.000Z")
+        ).is_ok());
+    }
+
+    #[test]
+    fn test_datetime_from_utc_string_no_secs() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00Z").is_ok());
+    }
+
+    #[test]
+    fn test_datetime_with_explicit_tz() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00.000+01:00").is_ok());
+    }
+
+    #[test]
+    fn test_datetime_with_no_tz_or_utc() {
+        assert!(LiteralNode::datetime("2026-03-02T09:00:00").is_ok());
+    }
+
+    #[test]
+    fn test_invalid_datetime() {
+        assert!(LiteralNode::datetime("Random string").is_err())
+    }
+    
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_primitive_datetime_try_from() {
+        use time::macros::datetime;
+
+        let primitive = datetime!(2026-03-02 09:00:00.000);
+        assert!(LiteralNode::try_from(primitive).is_ok());
+    }
+
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_offset_datetime_try_from() {
+        use time::macros::datetime;
+
+        let offset = datetime!(2026-03-02 09:00:00.000 +1);
+        assert!(LiteralNode::try_from(offset).is_ok());
+    }
+
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_primitive_write_trig() {
+        use time::macros::datetime;
+
+        let primitive_node = LiteralNode::try_from(
+            datetime!(2026-03-02 09:00:00.000)
+        ).unwrap();
+
+        let mut primitive_buf = vec![];
+        primitive_node.write_trig(&mut primitive_buf).unwrap();
+        let primitive_string = String::from_utf8(primitive_buf).unwrap();
+
+        assert_eq!(
+            primitive_string,
+            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[cfg(feature = "time")]
+    #[test]
+    fn test_time_offset_write_trig() {
+        use time::macros::datetime;
+
+        let offset_node = LiteralNode::try_from(
+            datetime!(2026-03-02 09:00:00.000 +1)
+        ).unwrap();
+
+        let mut offset_buf = vec![];
+        offset_node.write_trig(&mut offset_buf).unwrap();
+        let offset_string = String::from_utf8(offset_buf).unwrap();
+        assert_eq!(
+            offset_string,
+            String::from("\"2026-03-02T09:00:00+01:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[cfg(feature = "chrono")]
+    #[test]
+    fn test_chrono_naive_write_trig() {
+        let naive = chrono::NaiveDateTime::parse_from_str(
+            "2026-03-02T09:00:00.00000", "%Y-%m-%dT%H:%M:%S%.f"
+        ).unwrap();
+        let naive_node = LiteralNode::from(naive);
+
+        let mut naive_buf = vec![];
+        naive_node.write_trig(&mut naive_buf).unwrap();
+        let naive_string = String::from_utf8(naive_buf).unwrap();
+        println!("{naive_string}");
+        assert_eq!(
+            naive_string,
+            String::from("\"2026-03-02T09:00:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[cfg(feature = "chrono")]
+    #[test]
+    fn test_chrono_datetime_offset_write_trig() {
+        use chrono::TimeZone;
+
+        let offset = chrono::FixedOffset::east_opt(5 * 3600).unwrap()
+            .with_ymd_and_hms(2026, 03, 02, 09, 0, 0).unwrap();
+        let offset_node = LiteralNode::try_from(offset).unwrap();
+
+        let mut offset_buf = vec![];
+        offset_node.write_trig(&mut offset_buf).unwrap();
+        let offset_string = String::from_utf8(offset_buf).unwrap();
+        assert_eq!(
+            offset_string,
+            String::from("\"2026-03-02T09:00:00+05:00\"^^xsd:dateTime")
+        );
+    }
+
+    #[test]
+    fn test_decimal_from_int_string() {
+        assert!(LiteralNode::decimal("69").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_decimal_string() {
+        assert!(LiteralNode::decimal("69.420").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_signed_int_string() {
+        assert!(LiteralNode::decimal("+24").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_signed_decimal_string() {
+        assert!(LiteralNode::decimal("-2.468").is_ok());
+    }
+
+    #[test]
+    fn test_decimal_from_f32() {
+        assert_eq!(
+            LiteralNode::Decimal(Cow::Owned(String::from("69.42"))),
+            LiteralNode::from(69.420f32)
+        );
+    }
+    
+    #[test]
+    fn test_valid_gyear_signed() {
+        assert!(LiteralNode::gyear("-0099").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_really_old() {
+        assert!(LiteralNode::gyear("-4206969").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_far_future() {
+        assert!(LiteralNode::gyear("696969").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_unsigned() {
+        assert!(LiteralNode::gyear("1999").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_utc() {
+        assert!(LiteralNode::gyear("-0069Z").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_offset() {
+        assert!(LiteralNode::gyear("-0069+12:00").is_ok());
+    }
+
+    #[test]
+    fn test_valid_gyear_invalid_offset() {
+        assert!(LiteralNode::gyear("-0069+12:00:59").is_err());
+    }
+
+    #[test]
+    fn test_invalid_gyear_too_short() {
+        assert!(LiteralNode::gyear("-420").is_err());
+    }
+
+    #[test]
+    fn test_invalid_gyear_too_short_unsigned() {
+        assert!(LiteralNode::gyear("69").is_err());
+    }
+
+    #[test]
+    fn test_valid_gyear_from_i32_unsigned_write_trig() {
+        let gyear_node = LiteralNode::gyear_from_i32(69);
+
+        let mut buf = vec![];
+        gyear_node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"0069\"^^xsd:gYear")
+        );
+    }
+
+    #[test]
+    fn test_valid_gyear_from_i32_signed_write_trig() {
+        let gyear_node = LiteralNode::gyear_from_i32(-420);
+
+        let mut buf = vec![];
+        gyear_node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"-0420\"^^xsd:gYear")
+        );
+    }
+
+    #[test]
+    fn test_valid_language_string() {
+        assert!(LiteralNode::string(
+            Some("fr"), String::from("oui")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_invalid_language_string() {
+        assert!(LiteralNode::string(
+            Some("french"), String::from("non")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_no_language_string() {
+        assert!(LiteralNode::string(
+            None::<String>, String::from("random string")).is_ok()
+        )
+    }
+
+    #[test]
+    fn test_no_language_string_write_trig() {
+        let node = LiteralNode::string_no_lang("My Literal");
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"")
+        );
+    }
+
+    #[test]
+    fn test_en_language_string_write_trig() {
+        let node = LiteralNode::string_en("My Literal");
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"@en")
+        );
+    }
+
+    #[test]
+    fn test_custom_language_string_write_trig() {
+        let node = LiteralNode::string(
+            Some("eng"), "My Literal"
+        ).unwrap();
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My Literal\"@eng")
+        );
+    }
+
+    #[test]
+    fn test_custom_language_string_write_trig_with_escape() {
+        let node = LiteralNode::string(
+            Some("uk"), "My\r\nLiteral"
+        ).unwrap();
+
+        let mut buf = vec![];
+        node.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"My\r\nLiteral\"@uk")
+        );
+    }
+
+    #[test]
+    fn test_blank_node_write_trig() {
+        let blank = BlankNode::new("myprefix");
+
+        let mut buf = vec![];
+        blank.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("_:myprefix")
+        )
+    }
+
+    #[test]
+    fn test_blank_node_write_trig_w_escape_char() {
+        let blank = BlankNode::new("my_pre~fix\n");
+
+        let mut buf = vec![];
+        blank.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from(r"_:my_pre\~fix")
+        )
+    }
 
     #[test]
     fn test_add_invalid_namespace() {

@@ -1,7 +1,33 @@
-//! A collection of static [`Predicate`]s for widely used predicates for 
-//! existing static [`Namespace`](crate::namespaces::Namespace)s.
+use crate::namespaces::Namespace;
 use crate::namespaces::statics::{AOCAT, RDF, RDFS, SKOS};
-use crate::nodes::Predicate;
+use crate:: nodes::raw::IriNode;
+
+/// A `Predicate` forms the middle part of any `Triple`, establishing the 
+/// relationship between a `Subject` and an `Object`.
+/// 
+/// A `Predicate` can only be an `IriNode`, therefore, it can only be 
+/// constructed using [`Into<Predicate>`] from an `IriNode`.
+/// 
+/// Because many `Predicate`s are frequently reused, many `const` `Predicate`s 
+/// are exported alongside this struct.
+#[derive(Debug)]
+pub struct Predicate<'a>(IriNode<'a>);
+
+impl<'a> Predicate<'a> {
+    /// Create a new `Predicate` from 'static values. Only accessible within 
+    /// this crate to bypass IRI validation.
+    pub(crate) fn new_const(
+        namespace: Namespace<'static>, endpoint: &'static str
+    ) -> Predicate<'a> {
+        Predicate(IriNode::new_const(namespace, endpoint))
+    }
+
+    /// Construct a new `Predicate` from an `IriNode` with the same `'a` 
+    /// lifetime. Private function to allow construction only within this crate.
+    pub(crate) fn new(iri_node: IriNode<'a>) -> Predicate<'a> {
+        Predicate(iri_node)
+    }
+}
 
 /// aocat:from
 pub const AOCAT_FROM: Predicate = Predicate::new_const(
