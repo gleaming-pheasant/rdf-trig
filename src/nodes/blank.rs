@@ -10,10 +10,10 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
+use crate::nodes::StagingNode;
 use crate::nodes::subject::Subject;
 use crate::nodes::object::Object;
-use crate::nodes::store::{InternedBlankNode, StagedNode};
-use crate::traits::WriteTriG;
+use crate::traits::{ToInterned, WriteTriG};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 
@@ -21,7 +21,7 @@ use crate::utils::write_escaped_local_name;
 /// 
 /// No character escaping is done on the label before or during construction.
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct BlankNode<'a>(pub(crate) Cow<'a, str>);
+pub struct BlankNode<'a>(Cow<'a, str>);
 
 impl<'a> BlankNode<'a> {
     /// Create a new `BlankNode` with the provided `id`.
@@ -47,20 +47,22 @@ impl<'a> Into<Subject<'a>> for BlankNode<'a> {
     }
 }
 
-impl<'a> Into<StagedNode<'a>> for BlankNode<'a> {
-    /// Wrap this `BlankNode` as a `StagedNode` in preparation for interning.
-    #[inline]
-    fn into(self) -> StagedNode<'a> {
-        StagedNode::Blank(self)
+impl<'a> ToInterned for BlankNode<'a> {
+    type InternedType = BlankNode<'static>;
+
+    fn to_interned(&self) -> Self::InternedType {
+        BlankNode(Cow::Owned(self.0.clone().into_owned()))
     }
 }
 
-impl ToOwned for BlankNode<'_> {
-    type Owned = InternedBlankNode;
+// #[derive(Debug, Eq, Hash, PartialEq)]
+// pub(crate) struct InternedBlankNode(pub BlankNode<'static>);
 
+impl<'a> Into<StagingNode<'a>> for BlankNode<'a> {
+    /// Wrap this `BlankNode` as a `StagedNode` in preparation for interning.
     #[inline]
-    fn to_owned(&self) -> Self::Owned {
-        InternedBlankNode(BlankNode(Cow::Owned(self.0.clone().into_owned())))
+    fn into(self) -> StagingNode<'a> {
+        StagingNode::Blank(self)
     }
 }
 

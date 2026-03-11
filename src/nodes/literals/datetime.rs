@@ -9,8 +9,8 @@ use time::macros::format_description;
 
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
-use crate::nodes::raw::literals::LiteralNode;
-use crate::traits::WriteTriG;
+use crate::nodes::literals::LiteralNode;
+use crate::traits::{ToInterned, WriteTriG};
 
 const FMT_NAIVE_SUBSECOND: &[time::format_description::FormatItem<'_>] = 
     format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]");
@@ -134,6 +134,14 @@ impl<'a> Into<Object<'a>> for DateTimeLiteral<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
         Object::Literal(self.into())
+    }
+}
+
+impl<'a> ToInterned for DateTimeLiteral<'a> {
+    type InternedType = DateTimeLiteral<'static>;
+
+    fn to_interned(&self) -> Self::InternedType {
+        DateTimeLiteral(Cow::Owned(self.0.clone().into_owned()))
     }
 }
 

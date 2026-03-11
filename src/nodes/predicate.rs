@@ -1,6 +1,6 @@
 use crate::namespaces::Namespace;
 use crate::namespaces::statics::{AOCAT, RDF, RDFS, SKOS};
-use crate:: nodes::raw::IriNode;
+use crate:: nodes::IriNode;
 
 /// A `Predicate` forms the middle part of any `Triple`, establishing the 
 /// relationship between a `Subject` and an `Object`.
@@ -16,7 +16,7 @@ pub struct Predicate<'a>(IriNode<'a>);
 impl<'a> Predicate<'a> {
     /// Create a new `Predicate` from 'static values. Only accessible within 
     /// this crate to bypass IRI validation.
-    pub(crate) fn new_const(
+    pub(crate) const fn new_const(
         namespace: Namespace<'static>, endpoint: &'static str
     ) -> Predicate<'a> {
         Predicate(IriNode::new_const(namespace, endpoint))

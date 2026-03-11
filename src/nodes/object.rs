@@ -1,6 +1,5 @@
-use crate::nodes::raw::{BlankNode, IriNode};
-use crate::nodes::raw::literals::LiteralNode;
-
+use crate::nodes::{BlankNode, IriNode};
+use crate::nodes::literals::LiteralNode;
 
 /// An `Object` is the final part of any `Triple`, effectively providing the 
 /// value of a `Predicate` for a `Subject`.

@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use crate::nodes::object::Object;
-use crate::nodes::raw::literals::LiteralNode;
+use crate::nodes::literals::LiteralNode;
 use crate::errors::RdfTrigError;
+use crate::traits::ToInterned;
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct LangStringLiteral<'a> {
@@ -60,5 +61,16 @@ impl<'a> Into<Object<'a>> for LangStringLiteral<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
         Object::Literal(self.into())
+    }
+}
+
+impl<'a> ToInterned for LangStringLiteral<'a> {
+    type InternedType = LangStringLiteral<'static>;
+
+    fn to_interned(&self) -> Self::InternedType {
+        LangStringLiteral {
+            value: Cow::Owned(self.value.clone().into_owned()),
+            language: Cow::Owned(self.language.clone().into_owned()),
+        }
     }
 }

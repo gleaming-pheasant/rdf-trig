@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use crate::WriteTriG;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
-use crate::nodes::raw::literals::LiteralNode;
+use crate::nodes::literals::LiteralNode;
 
 /// A wrapper around an [`i32`], which can be constructed either with a 
 /// native `i32`, or with a string which can be parsed as one.
@@ -15,7 +15,7 @@ use crate::nodes::raw::literals::LiteralNode;
 /// This is not a valid XML Schema gYear. It does not pad years with fewer than 
 /// four digits with zeroes and does not allow timezone declarations. This is to 
 /// assist with speed an practicality of processing.
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct GYearLiteral(i32);
 
 impl GYearLiteral {

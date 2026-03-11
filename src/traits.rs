@@ -35,3 +35,11 @@ pub trait IntoTriples {
     /// Convert `self` into a [`Iterator<Item = Triple>`].
     fn into_triples(self) -> Self::Iter;
 }
+
+pub(crate) trait ToInterned {
+    type InternedType;
+
+    /// Implementors of this trait must take a reference to self and return an 
+    /// `InternedType` for self which is self with a 'static lifetime.
+    fn to_interned(&self) -> Self::InternedType;
+}

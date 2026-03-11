@@ -1,4 +1,4 @@
-use crate::nodes::raw::{BlankNode, IriNode};
+use crate::nodes::{BlankNode, IriNode};
 
 /// A `Subject` forms part of a `Triple`; it defines the node that the 
 /// rest of the `Triple` expands upon.

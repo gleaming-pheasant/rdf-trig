@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use crate::WriteTriG;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
-use crate::nodes::raw::literals::LiteralNode;
+use crate::nodes::literals::LiteralNode;
 
 /// A wrapper around an [`f32`], which can be constructed either with a 
 /// native `f32`, or with a string which can be parsed as one.
@@ -14,7 +14,7 @@ use crate::nodes::raw::literals::LiteralNode;
 /// Values in this struct are stored as `f32`s and output with a custom `f32` 
 /// formatting in [`WriteTriG`], which appends a period (".") if the value is a 
 /// whole number.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DecimalLiteral(f32);
 
 impl Eq for DecimalLiteral {}

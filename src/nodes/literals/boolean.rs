@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
-use std::ops::Deref;
 
 use crate::WriteTriG;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
-use crate::nodes::raw::literals::LiteralNode;
+use crate::nodes::literals::LiteralNode;
 
 /// A wrapper around a [`bool`], which can be constructed either with a 
 /// native `bool`, or with a string equal to "1"/"0" or "true"/"false".
@@ -13,7 +12,7 @@ use crate::nodes::raw::literals::LiteralNode;
 /// Values in this struct are stored as `bool`s and output as the `bool` 
 /// standard [`ToString`] values of "true" or "false" - regardless of the input 
 /// value - in order to reduce memory usage.
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct BooleanLiteral(bool);
 
 impl BooleanLiteral {
@@ -49,14 +48,6 @@ impl<'a> Into<LiteralNode<'a>> for BooleanLiteral {
 impl From<bool> for BooleanLiteral {
     fn from(value: bool) -> Self {
         BooleanLiteral(value)
-    }
-}
-
-impl Deref for BooleanLiteral {
-    type Target = bool;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
