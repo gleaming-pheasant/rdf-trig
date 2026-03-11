@@ -10,6 +10,10 @@ use crate:: nodes::IriNode;
 /// 
 /// Because many `Predicate`s are frequently reused, many `const` `Predicate`s 
 /// are exported alongside this struct.
+/// 
+/// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
+/// [`DataStore`](crate::datastore::DataStore), this struct serves no practical 
+/// purpose.
 #[derive(Debug)]
 pub struct Predicate<'a>(IriNode<'a>);
 

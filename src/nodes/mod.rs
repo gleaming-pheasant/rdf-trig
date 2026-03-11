@@ -11,13 +11,13 @@ mod blank;
 mod iri;
 mod literals;
 mod object;
-mod predicate;
+pub mod predicate; // Public to allow access to const `Predicate`s.
 mod subject;
 mod store;
 
 pub use blank::BlankNode;
 pub use iri::IriNode;
-use iri::StagingIriNode;
+pub(crate) use iri::StagingIriNode;
 pub use literals::{
     BooleanLiteral,
     DecimalLiteral,
@@ -29,7 +29,7 @@ pub use literals::{
 pub use object::Object;
 pub use predicate::Predicate;
 pub use subject::Subject;
-pub(crate) use store::NodeStore;
+pub(crate) use store::{NodeId, NodeStore};
 
 use crate::traits::ToInterned;
 

@@ -40,18 +40,21 @@ impl<'a> IriNode<'a> {
 }
 
 impl<'a> Into<Object<'a>> for IriNode<'a> {
+    #[inline]
     fn into(self) -> Object<'a> {
         Object::Iri(self)
     }
 }
 
 impl<'a> Into<Predicate<'a>> for IriNode<'a> {
+    #[inline]
     fn into(self) -> Predicate<'a> {
         Predicate::new(self)
     }
 }
 
 impl<'a> Into<Subject<'a>> for IriNode<'a> {
+    #[inline]
     fn into(self) -> Subject<'a> {
         Subject::Iri(self)
     }
@@ -100,6 +103,7 @@ impl<'a> StagingIriNode<'a> {
 impl<'a> ToInterned for StagingIriNode<'a> {
     type InternedType = StagingIriNode<'static>;
 
+    #[inline]
     fn to_interned(&self) -> Self::InternedType {
         StagingIriNode {
             namespace_id: self.namespace_id(),

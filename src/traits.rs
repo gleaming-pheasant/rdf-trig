@@ -1,6 +1,6 @@
 use std::io::{Result as IoResult, Write};
 
-use crate::groups::triples::Triple;
+use crate::triples::Triple;
 
 /// An implementation of [`Write`] which writes in the 
 /// [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) format.
@@ -25,15 +25,7 @@ impl<'a, T: WriteTriG + ?Sized> WriteTriG for &'a T {
 /// A trait for converting self into a single [`Triple`]s.
 pub trait IntoTriple {
     /// Convert `self` into a `Triple`.
-    fn into_triple(self) -> Triple;
-}
-
-/// A trait for converting self to an iterator over [`Triple`]s.
-pub trait IntoTriples {
-    type Iter: Iterator<Item = Triple>;
-
-    /// Convert `self` into a [`Iterator<Item = Triple>`].
-    fn into_triples(self) -> Self::Iter;
+    fn into_triple<'a>(self) -> Triple<'a>;
 }
 
 pub(crate) trait ToInterned {

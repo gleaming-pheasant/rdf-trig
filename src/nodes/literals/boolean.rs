@@ -46,6 +46,7 @@ impl<'a> Into<LiteralNode<'a>> for BooleanLiteral {
 }
 
 impl From<bool> for BooleanLiteral {
+    #[inline]
     fn from(value: bool) -> Self {
         BooleanLiteral(value)
     }

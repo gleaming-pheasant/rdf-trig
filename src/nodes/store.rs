@@ -1,7 +1,8 @@
 use std::ops::Deref;
 
 use crate::FastIndexSet;
-use crate::nodes::StagingNode;
+use crate::namespaces::DEFAULT_GRAPH_NAMESPACE_ID;
+use crate::nodes::{StagingIriNode, StagingNode};
 use crate::traits::ToInterned;
 
 /// A `NodeId` is a wrapper around a `u32` and is only retrievable by converting 
@@ -26,21 +27,36 @@ impl NodeId {
 impl Deref for NodeId {
     type Target = u32;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-/// A wrapper around a [`FastIndexSet<InternedNode>`] which serves to store 
+/// The reserved `NodeId` for the default graph's IRI; is set to contain 0 on 
+/// initialisation of the [`NodeStore`].
+pub(crate) const DEFAULT_GRAPH_NODE_ID: NodeId = NodeId(0);
+
+/// A wrapper around a [`FastIndexSet<StagingNode>`] which serves to store 
 /// unique "nodes" and hand out [`NodeId`]s as references to the 
-/// [`InternedNode`]s.
+/// interned [`StagingNode`]s.
 #[derive(Debug)]
 pub(crate) struct NodeStore(FastIndexSet<StagingNode<'static>>);
 
 impl NodeStore {
     /// Create a new `NodeStore`.
+    /// 
+    /// This function initialises an [`indexmap::IndexSet`] (or [`FastIndexSet`] 
+    /// for the purposes of this crate) and inserts a default graph's IRI node 
+    /// to guarantee that index 0 is the default graph.
     pub(crate) fn new() -> NodeStore {
-        NodeStore(FastIndexSet::default())
+        let mut ix_set = FastIndexSet::default();
+
+        ix_set.insert(StagingNode::Iri(
+            StagingIriNode::new(DEFAULT_GRAPH_NAMESPACE_ID, "".into()))
+        );
+
+        NodeStore(ix_set)
     }
 
     /// Add a `StagingNode` to this `NodeStore`, returning a `NodeId`.

@@ -1,33 +1,70 @@
 use std::ops::Deref;
 
-use crate::FastIndexSet;
-use crate::graphs::GraphId;
-use crate::groups::triples::Triple;
-use crate::nodes::NodeId;
+use crate::triples::InternedTriple;
+use crate::{FastIndexSet, Triple};
+use crate::nodes::{
+    IriNode,
+    NodeId,
+    Object,
+    Predicate,
+    StagingIriNode,
+    StagingNode,
+    Subject
+};
 
-/// A [`Quad`] is a [`Triple`] with an optional [`GraphId`] to assign it to a 
-/// [`Graph`] that has been registered with a 
-/// [`TripleStore`](super::triples::TripleStore).
+/// A [`Quad`] is a [`Triple`] with an [`IriNode`]: the IRI for the graph 
+/// that the triple is assigned to.
 #[derive(Debug)]
-pub struct Quad {
-    graph: GraphId,
-    triple: Triple
+pub struct Quad<'a> {
+    graph: IriNode<'a>,
+    triple: Triple<'a>
 }
 
-impl Quad {
+impl<'a> Quad<'a> {
     /// Create a new `Quad`.
-    pub fn new(
-        graph: GraphId, triple: Triple
-    ) -> Quad {
+    pub fn new(graph: IriNode<'a>, triple: Triple<'a>) -> Quad<'a> {
         Quad { graph, triple }
     }
 
-    /// Consume this `Quad` and splits it into a tuple of its (`GraphId`, 
-    /// `Triple`).
-    pub fn into_parts(self) -> (GraphId, Triple) {
+    /// Create a new `Quad` from the Graph [`IriNode`] and the types that form 
+    /// each part of a [`Triple`].
+    /// 
+    /// This method does not require the `Triple` to be constructed separately 
+    /// first.
+    pub fn from_parts<S,P,O>(
+        graph: IriNode<'a>, subject: S, predicate: P, object: O
+    ) -> Quad<'a>
+    where
+        S: Into<Subject<'a>>,
+        P: Into<Predicate<'a>>,
+        O: Into<Object<'a>>
+    {
+        Quad {
+            graph,
+            triple: Triple::new(subject.into(), predicate.into(), object.into())
+        }
+    }
+
+    /// Consume this `Quad` and splits it into a tuple of its (`graph`, 
+    /// `triple`).
+    pub fn into_graph_and_tuple(self) -> (IriNode<'a>, Triple<'a>) {
         (self.graph, self.triple)
     }
 }
+
+/// A `StagingQuad` is a wrapper around a [`StagingIriNode`] (a graph IRI for 
+/// which the [`Namespace`] has already been interned) and an [`InternedTriple`] 
+/// (a [`Triple`] composed of [`NodeIds`] for its interned parts).
+/// 
+/// This is a staging struct, which holds these values before being exchanged 
+/// for 
+#[derive(Debug, Eq, Hash, PartialEq)]
+pub(crate) struct StagingQuad<'a> {
+    graph: StagingIriNode<'a>,
+    triple: InternedTriple
+}
+
+todo!()
 
 
 #[derive(Debug, Eq, Hash, PartialEq)]

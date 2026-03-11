@@ -67,6 +67,7 @@ impl<'a> Into<Object<'a>> for LangStringLiteral<'a> {
 impl<'a> ToInterned for LangStringLiteral<'a> {
     type InternedType = LangStringLiteral<'static>;
 
+    #[inline]
     fn to_interned(&self) -> Self::InternedType {
         LangStringLiteral {
             value: Cow::Owned(self.value.clone().into_owned()),

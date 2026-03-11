@@ -33,6 +33,7 @@ impl GYearLiteral {
 }
 
 impl From<i32> for GYearLiteral {
+    #[inline]
     fn from(value: i32) -> Self {
         GYearLiteral(value)
     }

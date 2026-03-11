@@ -36,12 +36,14 @@ impl<'a> BlankNode<'a> {
 }
 
 impl<'a> Into<Object<'a>> for BlankNode<'a> {
+    #[inline]
     fn into(self) -> Object<'a> {
         Object::Blank(self)
     }
 }
 
 impl<'a> Into<Subject<'a>> for BlankNode<'a> {
+    #[inline]
     fn into(self) -> Subject<'a> {
         Subject::Blank(self)
     }
@@ -50,6 +52,7 @@ impl<'a> Into<Subject<'a>> for BlankNode<'a> {
 impl<'a> ToInterned for BlankNode<'a> {
     type InternedType = BlankNode<'static>;
 
+    #[inline]
     fn to_interned(&self) -> Self::InternedType {
         BlankNode(Cow::Owned(self.0.clone().into_owned()))
     }

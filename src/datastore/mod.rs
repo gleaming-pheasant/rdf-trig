@@ -1,34 +1,18 @@
-use std::borrow::Cow;
+mod views;
+
 use std::io::{Result as IoResult, Write};
 
-use crate::graphs::{
-    FullGraphView,
-    Graph,
-    GraphId,
-    GraphStore,
-    GraphView
-};
 use crate::namespaces::{Namespace, NamespaceId, NamespaceStore};
 use crate::namespaces::statics::XSD;
-use crate::nodes::{
-    raw::InternedIriNode,
-    raw::InternedNode,
-    IriNodeView,
-    NodeId,
-    NodeStore,
-    NodeView,
-    Object,
-    Subject
-};
-use crate::groups::quads::{InternedQuad, Quad, QuadId, QuadStore};
-use crate::groups::triples::{
+use crate::nodes::{NodeId, NodeStore, Object, Subject};
+use crate::quads::{InternedQuad, Quad, QuadId, QuadStore};
+use crate::triples::{
     InternedTriple,
     Triple,
     TripleId,
-    TripleStore,
-    TripleView
+    TripleStore
 };
-use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
+use crate::traits::{IntoTriple, WriteTriG};
 
 /// A `DataStore` should be the main entry point for applications using this 
 /// crate.
@@ -42,7 +26,6 @@ use crate::traits::{IntoTriple, IntoTriples, WriteTriG};
 #[derive(Debug)]
 pub struct DataStore {
     namespaces: NamespaceStore,
-    graphs: GraphStore,
     nodes: NodeStore,
     quads: QuadStore,
     triples: TripleStore
@@ -56,89 +39,16 @@ impl DataStore {
 
         DataStore {
             namespaces,
-            graphs: GraphStore::new(),
             nodes: NodeStore::new(),
             quads: QuadStore::new(),
             triples: TripleStore::new()
         }
     }
 
-    /// Add a pre-built [`Graph`] to this `DataStore` for assigning [`Triple`]s 
-    /// and [`Quad`]s to.
-    /// 
-    /// This relies on the Graph being already set with a `'static` endpoint.
-    pub fn add_graph(&mut self, graph: Graph) -> GraphId {
-        let (ns, ep) = graph.into_parts();
-        let ns_id = self.namespaces.intern_namespace(ns);
-
-        self.graphs.intern_static_graph(ns_id, ep)
-    }
-
-    /// Add a graph to this datastore by appending the provided endpoint to the 
-    /// provided [`Namespace`] and interning both.
-    /// 
-    /// Use [Self::add_static_graph] if attempting to intern a graph with a 
-    /// 'static endpoint, in order to avoid additional string allocation.
-    /// 
-    /// Failure to do so will not break your application, but will decrease 
-    /// performance.
-    pub fn add_dynamic_graph<'a, C: Into<Cow<'a, str>>>(
-        &mut self, namespace: Namespace, endpoint: C
-    ) -> GraphId {
-        let ns_id = self.namespaces.intern_namespace(namespace);
-
-        self.graphs.intern_borrowed_graph(ns_id, endpoint)
-    }
-
-    /// Add a graph to this datastore by appending the provided 'static endpoint 
-    /// to the provided [`Namespace`] and interning both.
-    pub fn add_static_graph<C: Into<Cow<'static, str>>>(
-        &mut self, namespace: Namespace, endpoint: C
-    ) -> GraphId {
-        let ns_id = self.namespaces.intern_namespace(namespace);
-
-        self.graphs.intern_static_graph(ns_id, endpoint)
-    }
-
     /// Add a `Triple` (or implementor of [`IntoTriple`]) to this `DataStore`.
     pub fn add_triple<T: IntoTriple>(&mut self, triple: T) {
         let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple.into_triple());
         self.intern_triple(InternedTriple::new(sub_id, pred_id, obj_id));
-    }
-
-    /// Add all of the `Triple`s from an impl [`IntoTriples`] iterator to this 
-    /// `DataStore`.
-    pub fn add_triples<T: IntoTriples>(&mut self, triples: T) {
-        for triple in triples.into_triples() {
-            self.add_triple(triple);
-        }
-    }
-
-    /// Assign the provided `Triple` (or implementor of `Into<Triple>`) to the 
-    /// provided `GraphId` and add it to this `DataStore`.
-    pub fn add_triple_to_graph<T: IntoTriple>(
-        &mut self, graph_id: GraphId, triple: T
-    ) {
-        let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(
-            triple.into_triple()
-        );
-
-        self.intern_quad(InternedQuad::new(
-            graph_id, sub_id, pred_id, obj_id
-        ));
-    }
-
-    /// Assign the provided `Vec<Triple>` (or implementor of `Into<Vec<Triple>>`) 
-    /// to the provided `GraphId` and add them to this `DataStore`.
-    pub fn add_triples_to_graph<T: IntoTriples>(
-        &mut self, graph_id: GraphId, triples: T
-    ) {
-        for triple in triples.into_triples() {
-            let (sub_id, pred_id, obj_id) = self.intern_nodes_from_triple(triple);
-            self.intern_quad(InternedQuad::new(
-                graph_id, sub_id, pred_id, obj_id
-            ));
-        }
     }
 
     /// Add a pre-built [`Quad`] (with a [`GraphId`] already registered to a 

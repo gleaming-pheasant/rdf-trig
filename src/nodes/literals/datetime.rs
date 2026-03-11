@@ -140,6 +140,7 @@ impl<'a> Into<Object<'a>> for DateTimeLiteral<'a> {
 impl<'a> ToInterned for DateTimeLiteral<'a> {
     type InternedType = DateTimeLiteral<'static>;
 
+    #[inline]
     fn to_interned(&self) -> Self::InternedType {
         DateTimeLiteral(Cow::Owned(self.0.clone().into_owned()))
     }

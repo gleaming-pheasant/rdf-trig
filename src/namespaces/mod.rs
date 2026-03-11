@@ -101,6 +101,14 @@ impl PartialEq for Namespace<'_> {
 
 impl Eq for Namespace<'_> {}
 
+/// The default namespace's url.
+const DEFAULT_GRAPH_NAMESPACE: Namespace = Namespace::new_const(
+    "", "urn:x-arq:DefaultGraph"
+);
+/// The reserved [`NamespaceId`] for the default graph, is set to contain 0 on 
+/// initialisation of the [`NamespaceStore`].
+pub(crate) const DEFAULT_GRAPH_NAMESPACE_ID: NamespaceId = NamespaceId(0);
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct NamespaceId(pub(crate) u32);
 
@@ -136,16 +144,20 @@ impl Deref for NamespaceId {
 /// If a `prefix` collision is detected, the `NamespaceStore` will automatically 
 /// append an incrementing number to the end of the prefix.
 #[derive(Debug)]
-pub(crate) struct NamespaceStore {
-    store: FastIndexSet<Namespace<'_>>
-}
+pub(crate) struct NamespaceStore(FastIndexSet<Namespace<'static>>);
 
 impl NamespaceStore {
-    /// Create a new [`NamespaceStore`].
+    /// Create a new `NamespaceStore`.
+    /// 
+    /// This function initialises an [`indexmap::IndexSet`] (or [`FastIndexSet`] 
+    /// for the purposes of this crate) and inserts a default graph namespace to 
+    /// guarantee that index 0 is the default graph.
     pub(crate) fn new() -> NamespaceStore {
-        NamespaceStore {
-            store: FastIndexSet::default()
-        }
+        let mut ix_set = FastIndexSet::default();
+
+        ix_set.insert(DEFAULT_GRAPH_NAMESPACE);
+
+        NamespaceStore(ix_set)
     }
 
     /// Add a [`Namespace`] to this `NamespaceStore`, returning its index 

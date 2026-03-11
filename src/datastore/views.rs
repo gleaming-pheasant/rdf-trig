@@ -1,3 +1,40 @@
+//! Contains views into borrowed 'static objects that can be retrieved from a 
+//! [`DataStore`] and its component parts.
+//! 
+//! // /// A `TripleView` is exactly as it sounds; a view to a [`Triple`]. It contains 
+// /// the [`NodeView`]s for the `subject`, `predicate` and `object` components of 
+// /// this triple, and can be retrieved from triples interned in a 
+// /// [`DataStore`](crate::store::DataStore).
+// /// 
+// /// `TripleView` implements [`WriteTriG`] for writing individual triples in TriG 
+// /// format. This is done without a named graph, so each triple is implicitly 
+// /// added to a default graph.
+// #[derive(Debug)]
+// pub struct TripleView<'a> {
+//     subject: NodeView<'a>,
+//     predicate: NodeView<'a>,
+//     object: NodeView<'a>
+// }
+
+// impl<'a> TripleView<'a> {
+//     pub(crate) fn new(
+//         subject: NodeView<'a>, predicate: NodeView<'a>, object: NodeView<'a>
+//     ) -> TripleView<'a> {
+//         TripleView { subject, predicate, object }
+//     }
+// }
+
+// impl<'a> WriteTriG for TripleView<'a> {
+//     fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
+//         self.subject.write_trig(writer)?;
+//         writer.write_all(b" ")?;
+//         self.predicate.write_trig(writer)?;
+//         writer.write_all(b" ")?;
+//         self.object.write_trig(writer)?;
+//         writer.write_all(b" .")
+//     }
+// }
+
 use crate::namespaces::Namespace;
 
 /// `IriNodeView` contains references to an [`IriNode`]'s interned [`Namespace`] 

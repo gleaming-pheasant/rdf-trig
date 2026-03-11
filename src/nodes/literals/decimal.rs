@@ -49,6 +49,7 @@ impl DecimalLiteral {
 }
 
 impl From<f32> for DecimalLiteral {
+    #[inline]
     fn from(value: f32) -> Self {
         DecimalLiteral(value)
     }

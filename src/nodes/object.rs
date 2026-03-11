@@ -7,6 +7,10 @@ use crate::nodes::literals::LiteralNode;
 /// An `Object` can be any of a `BlankNode`, `IriNode` or a literal node, and 
 /// can be constructed using the [`Into<Object>`] implementations of any of 
 /// those types.
+/// 
+/// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
+/// [`DataStore`](crate::datastore::DataStore), this struct serves no practical 
+/// purpose.
 #[derive(Debug)]
 pub enum Object<'a> {
     Blank(BlankNode<'a>),
