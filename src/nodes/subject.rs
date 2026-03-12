@@ -8,10 +8,16 @@ use crate::nodes::{BlankNode, IriNode};
 /// types.
 /// 
 /// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
-/// [`DataStore`](crate::datastore::DataStore), this struct serves no practical 
+/// [`TripleStore`](crate::datastore::TripleStore), this struct serves no practical 
 /// purpose.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Subject<'a> {
     Blank(BlankNode<'a>),
     Iri(IriNode<'a>)
+}
+
+impl<'a> From<&Subject<'a>> for Subject<'a> {
+    fn from(s: &Subject<'a>) -> Self {
+        s.clone()
+    }
 }

@@ -38,6 +38,11 @@ pub const DCTERMS: Namespace = Namespace::new_const(
     "dcterms", "http://purl.org/dc/terms/"
 );
 
+/// Terms used by [SPARQL 1.1](https://www.w3.org/ns/sparql#).
+pub const SPARQL: Namespace = Namespace::new_const(
+    "sparql", "http://www.w3.org/ns/sparql#"
+);
+
 /// The [Friend-of-a-Friend](https://xmlns.com/foaf/spec/) ontology.
 pub const FOAF: Namespace = Namespace::new_const(
     "foaf", "http://xmlns.com/foaf/0.1/"

@@ -1,11 +1,14 @@
 use std::borrow::Cow;
+use std::io::{self, Write};
 
+use crate::WriteTriG;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
 use crate::errors::RdfTrigError;
-use crate::traits::ToInterned;
+use crate::traits::ToStatic;
+use crate::utils::write_escaped_literal;
 
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct LangStringLiteral<'a> {
     value: Cow<'a, str>,
     language: Cow<'a, str>
@@ -64,14 +67,25 @@ impl<'a> Into<Object<'a>> for LangStringLiteral<'a> {
     }
 }
 
-impl<'a> ToInterned for LangStringLiteral<'a> {
-    type InternedType = LangStringLiteral<'static>;
+impl<'a> ToStatic for LangStringLiteral<'a> {
+    type StaticType = LangStringLiteral<'static>;
 
     #[inline]
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         LangStringLiteral {
             value: Cow::Owned(self.value.clone().into_owned()),
             language: Cow::Owned(self.language.clone().into_owned()),
         }
+    }
+}
+
+impl<'a> WriteTriG for LangStringLiteral<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"\"")?;
+        write_escaped_literal(writer, &self.value)?;
+        writer.write_all(b"\"@")?;
+        writer.write_all(self.language.as_bytes())?;
+
+        Ok(())
     }
 }

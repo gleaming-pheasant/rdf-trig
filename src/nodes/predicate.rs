@@ -1,6 +1,9 @@
+use std::ops::Deref;
+
 use crate::namespaces::Namespace;
 use crate::namespaces::statics::{AOCAT, RDF, RDFS, SKOS};
 use crate:: nodes::IriNode;
+use crate::traits::ToStatic;
 
 /// A `Predicate` forms the middle part of any `Triple`, establishing the 
 /// relationship between a `Subject` and an `Object`.
@@ -12,24 +15,42 @@ use crate:: nodes::IriNode;
 /// are exported alongside this struct.
 /// 
 /// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
-/// [`DataStore`](crate::datastore::DataStore), this struct serves no practical 
+/// [`TripleStore`](crate::datastore::TripleStore), this struct serves no practical 
 /// purpose.
-#[derive(Debug)]
-pub struct Predicate<'a>(IriNode<'a>);
+#[derive(Clone, Debug)]
+pub struct Predicate<'a>(pub(crate) IriNode<'a>);
 
 impl<'a> Predicate<'a> {
     /// Create a new `Predicate` from 'static values. Only accessible within 
     /// this crate to bypass IRI validation.
     pub(crate) const fn new_const(
-        namespace: Namespace<'static>, endpoint: &'static str
+        namespace: Namespace<'static>, local_name: &'static str
     ) -> Predicate<'a> {
-        Predicate(IriNode::new_const(namespace, endpoint))
+        Predicate(IriNode::new_const(namespace, local_name))
     }
+}
 
-    /// Construct a new `Predicate` from an `IriNode` with the same `'a` 
-    /// lifetime. Private function to allow construction only within this crate.
-    pub(crate) fn new(iri_node: IriNode<'a>) -> Predicate<'a> {
-        Predicate(iri_node)
+impl<'a> From<&Predicate<'a>> for Predicate<'a> {
+    fn from(p: &Predicate<'a>) -> Self {
+        p.clone()
+    }
+}
+
+impl<'a> Deref for Predicate<'a> {
+    type Target = IriNode<'a>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> ToStatic for Predicate<'a> {
+    type StaticType = Predicate<'static>;
+
+    #[inline]
+    fn to_static(&self) -> Self::StaticType {
+        Predicate(self.0.to_static())
     }
 }
 

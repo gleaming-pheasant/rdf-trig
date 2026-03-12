@@ -11,16 +11,19 @@ pub use gyear::GYearLiteral;
 pub use string::LangStringLiteral;
 
 use std::borrow::Cow;
+use std::io::{self, Write};
 
+use crate::WriteTriG;
 use crate::nodes::object::Object;
 use crate::nodes::StagingNode;
-use crate::traits::ToInterned;
+use crate::traits::ToStatic;
+use crate::utils::write_escaped_literal;
 
 /// A wrapper around the possible options that this crate declares for literal 
 /// nodes (`GYearLiteral`s, `StringLiteral`s, etc). Each specific type - with 
 /// the exception of `String` and `LangString`, which have their own constructor 
 /// methods - implements [`Into<LiteralNode>`] for a cleaner API.
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum LiteralNode<'a> {
     Boolean(BooleanLiteral),
     DateTime(DateTimeLiteral<'a>),
@@ -69,18 +72,37 @@ impl<'a> Into<StagingNode<'a>> for LiteralNode<'a> {
     }
 }
 
-impl<'a> ToInterned for LiteralNode<'a> {
-    type InternedType = LiteralNode<'static>;
+impl<'a> ToStatic for LiteralNode<'a> {
+    type StaticType = LiteralNode<'static>;
 
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         match self {
             LiteralNode::Boolean(bool) => LiteralNode::Boolean(*bool),
-            LiteralNode::DateTime(dtl) => LiteralNode::DateTime(dtl.to_interned()),
+            LiteralNode::DateTime(dtl) => LiteralNode::DateTime(dtl.to_static()),
             LiteralNode::Decimal(dec) => LiteralNode::Decimal(*dec),
             LiteralNode::GYear(int) => LiteralNode::GYear(*int),
-            LiteralNode::LangString(ls) => LiteralNode::LangString(ls.to_interned()),
+            LiteralNode::LangString(ls) => LiteralNode::LangString(ls.to_static()),
             LiteralNode::String(s) => {
                 LiteralNode::String(Cow::Owned(s.clone().into_owned()))
+            }
+        }
+    }
+}
+
+impl<'a> WriteTriG for LiteralNode<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            LiteralNode::Boolean(bool) => bool.write_trig(writer),
+            LiteralNode::DateTime(dt) => dt.write_trig(writer),
+            LiteralNode::Decimal(dec) => dec.write_trig(writer),
+            LiteralNode::GYear(gy) => gy.write_trig(writer),
+            LiteralNode::LangString(ls) => ls.write_trig(writer),
+            LiteralNode::String(s) => {
+                writer.write_all(b"\"")?;
+                write_escaped_literal(writer, &s)?;
+                writer.write_all(b"\"")?;
+
+                Ok(())
             }
         }
     }

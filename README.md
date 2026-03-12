@@ -3,8 +3,8 @@ A crate for quick formatting of RDF triples in
 [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) from Rust native types.
 
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
-for adding to a `DataStore`. It also provides traits for writing the `DataStore` 
-and individual elements to TriG.
+for adding to a `TripleStore`. It also provides traits for writing the 
+`TripleStore` and individual elements to TriG.
 
 The main impetus of this crate is speed. It uses types and methods explicitly 
 for reading and writing types with as little reallocation, copying and memory 
@@ -42,16 +42,15 @@ To align with common practices - but, ironically, not the XML Schema - this
 crate does not output valid `xsd:gYear`s. As with most modern software,
 including GraphDB which accepts gYears in this format, a year is taken as 
 entered. The [XML Schema](https://www.w3.org/TR/xmlschema11-2/#gYear) specifies 
-that a year shorter than 4 digits is pre-padded with zeroes (e.g. the year "*69*" 
-should become "*0069*"). The less said about this the better.
+that a year shorter than 4 digits is pre-padded with zeroes (e.g. the year 
+"*69*" should become "*0069*"). The less said about this the better.
 
 This crate also doesn't allow storage of timezone offsets with gYears. Again, 
 purely for speed and practicality.
 
-## Panic! Don't create too many triples!
-__Warning!__ When stored in a `DataStore`, this crate interns every element 
-that makes up its structure; `Namespace`s, `Graph`s, `Triple`s, `Quad`s and 
-all of their `nodes`.
+## Don't create too many triples!
+__Warning!__ When stored in a `TripleStore`, this crate interns every element 
+that makes up its structure; `Namespace`s, `Triple`s, all of their `nodes`.
 
 It maintains a group of collections for each specific type, and everything is 
 represented with an index to prevent duplication.
@@ -69,7 +68,7 @@ E.g. declaring *"owl"* as the prefix for both *"http://www.w3.org/2002/07/owl#"*
 and *"http://www.w3.org/2002/07/owl"* (anchor removed) will provide prefixes of 
 *"owl"* and *"owl0"* respectively.
 
-If you've messed up, and you're declaring each endpoint as its own namespace 
+If you've messed up, and you're declaring each local name as its own namespace 
 with a shared prefix, this crate will panic!
 
 ### So many Ids...
@@ -120,5 +119,5 @@ To assist in speed, this crate implements the
 liable to change, may produce different hashes based on the platform and is not 
 HashDOS resistant, so do not use this crate for any distributed platforms.
 
-Additionally, this crate does not offer any means to index `Triple`s or `Quads`. 
-It should simply be used for casting to RDF types and writing out to TriG.
+Additionally, this crate does not offer any means to index `Triple`s. It should 
+simply be used for casting to RDF types and writing out to TriG.`

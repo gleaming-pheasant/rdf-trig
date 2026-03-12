@@ -2,32 +2,35 @@
 //! A crate for quick formatting of RDF triples in 
 //! [TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) from Rust native types.
 //! 
-//! The main entrypoints for most uses of this crate will be [`DataStore`] and 
-//! [`IntoTriple`] of [`IntoTriples`].
+//! The main entrypoints for most uses of this crate will be [`TripleStore`] and 
+//! [`Triple`].
 //! 
-//! Convert types to [`Triple`]s, optionally create [`Graph`]s and add them to 
-//! the `DataStore`, either combined or indvidually, and then call 
-//! [`WriteTriG::write_trig`] to output the full datastore in *TriG* format to 
-//! an implementor of [`io::Write`](std::io::Write) of your choice.
+//! Convert types to [`Triple`]s, optionally create 
+//! [`Graph`](nodes::Graph)s and add them to the `TripleStore`, either combined 
+//! or indvidually, and then call [`WriteTriG::write_trig`] to output the full 
+//! triplestore in *TriG* format to any implementor of [`io::Write`](std::io::Write).
 //! 
-//! There are lower-level nodes ([Subject](nodes::Subject), 
-//! [Predicate](nodes::Predicate) and [Object](nodes::Object)) useful for 
-//! converting your types to `Triple`s.
+//! There core nodes (`Graph`, [Subject](nodes::Subject), [Predicate](nodes::Predicate) 
+//! and [Object](nodes::Object)) which compose each `Triple` can only be 
+//! constructed from the raw node types - [BlankNode](nodes::BlankNode), 
+//! [IriNode](nodes::IriNode) and [LiteralNode](nodes::LiteralNode) - in order 
+//! to preserve validity on node types (e.g. a `Subject` can only be a 
+//! `BlankNode` or `IriNode`).
 //! 
 //! ## Examples
-//! ### Convert `IntoTriples`
+//! ### Convert `IntoTriple`
 //! ```rust
-//! use rdf_trig::{DataStore, IntoTriple, Triple, WriteTriG};
+//! use rdf_trig::{TripleStore, IntoTriple, Triple, WriteTriG};
 //! use rdf_trig::namespaces::statics::{AOCAT, ARIADNEPLUS};
-//! use rdf_trig::nodes::{Object, Predicate, Subject};
+//! use rdf_trig::nodes::{IriNode, LiteralNode};
 //! 
 //! struct MyTriple {
 //!     id: usize,
-//!     value: &'static str
+//!     value: String
 //! }
 //! 
 //! impl MyTriple {
-//!     fn new(id: usize, value: &'static str) -> MyTriple {
+//!     fn new(id: usize, value: String) -> MyTriple {
 //!         MyTriple { id, value }
 //!     }
 //! }
@@ -35,43 +38,45 @@
 //! impl IntoTriple for MyTriple {
 //!     fn into_triple(self) -> Triple {
 //!         Triple::new(
-//!             Subject::iri(ARIADNEPLUS, self.id.to_string()),
-//!             Predicate::new(AOCAT, "has_property"),
-//!             Object::string_en(self.value)
+//!             IriNode::new(ARIADNEPLUS, self.id.to_string()),
+//!             IriNode::new(AOCAT, "has_property"),
+//!             // This function returns a xsd:String literal, other XML Schema 
+//!             // literal types are available.
+//!             LiteralNode::new(self.value)
 //!         )
 //!     }
 //! }
 //! 
-//! let mut ds = DataStore::new();
-//! ds.add_triple(MyTriple {id: 420, value: "It smells"});
+//! let mut triplestore = TripleStore::new();
+//! triplestore.add_triple(MyTriple {id: 420, value: "It smells"});
 //! 
 //! let mut buf = Vec::new();
-//! ds.write_trig(&mut buf).unwrap();
+//! triplestore.write_trig(&mut buf).unwrap();
 //! 
-//! let as_string = String::from_utf8(buf).unwrap();
-//! assert!(as_string.contains(
+//! let triple_string = String::from_utf8(buf).unwrap();
+//! assert!(triple_string.contains(
 //!     "ariadneplus:420 aocat:has_property \"It smells\"@en"
 //! ));
 //! ```
 //! 
-//! ### Write Raw `Triple`s
+//! ### Write Raw `Triple`s with Borrowed Values
 //! ```rust
-//! use rdf_trig::{DataStore, Triple, WriteTriG};
+//! use rdf_trig::{TripleStore, Triple, WriteTriG};
 //! use rdf_trig::namespaces::statics::{AOCAT, ARIADNEPLUS};
-//! use rdf_trig::nodes::{Object, Predicate, Subject};
+//! use rdf_trig::nodes::{IriNode, LiteralNode};
 //! 
 //! 
 //! let triple = Triple::new(
-//!     Subject::iri(ARIADNEPLUS, "my_object"),
-//!     Predicate::new(AOCAT, "has_property"),
-//!     Object::string_no_lang("is_an_object")
+//!     IriNode::new(ARIADNEPLUS, "my_object"),
+//!     IriNode::new(AOCAT, "has_property"),
+//!     LiteralNode::new("is_an_object")
 //! );
 //! 
-//! let mut ds = DataStore::new();
-//! ds.add_triple(triple);
+//! let mut triplestore = TripleStore::new();
+//! triplestore.add_triple(triple);
 //! 
 //! let mut buf = Vec::new();
-//! ds.write_trig(&mut buf).unwrap();
+//! triplestore.write_trig(&mut buf).unwrap();
 //! 
 //! let as_string = String::from_utf8(buf).unwrap();
 //! assert!(as_string.contains(
@@ -122,14 +127,14 @@
 //! > designates the IRI http://a.example/%66oo-bar.
 //! 
 //! Therefore, the only verification that this crate does is on namespace IRIs 
-//! (the base IRI, and not any endpoints). Once those are verified, any appended 
-//! endpoints are simply trusted to be in a valid format. This crate makes no 
+//! (the base IRI, and not any local_names). Once those are verified, any appended 
+//! local_names are simply trusted to be in a valid format. This crate makes no 
 //! assumptions about what needs escaping, and instead only escapes characters 
-//! that would otherwise make an endpoint completely invalid (such as spaces, 
+//! that would otherwise make an local_name completely invalid (such as spaces, 
 //! '<', '{', '|', etc.).
 //! 
 //! ## __Warning__
-//! When stored in a [`DataStore`], this crate interns every element that makes 
+//! When stored in a [`TripleStore`], this crate interns every element that makes 
 //! up its structure; [`Graph`]s, [`Triple`]s, [`Quad`]s and [`nodes`]. It 
 //! maintains a group of hash-implementing collections and everything is 
 //! represented with an index to prevent duplication. This index is converted to 
@@ -140,24 +145,22 @@
 will query an IndexSet (or FastIndexSet), with an objects `...Id(u32)` type. 
 Unwrap is called because - except within this crate directly - it is currently 
 impossible for these `...Id` types to be created without a corresponding index 
-in a `DataStore` field.
+in a `TripleStore` field.
 
 Exercise extreme caution if ever developing means that could make these `...Id`s 
 constructable by any other method. */
-mod datastore;
 pub mod errors;
 pub mod namespaces;
 pub mod nodes;
-mod quads;
 pub(crate) mod traits;
 mod triples;
+mod triplestore;
 pub(crate) mod utils;
 
-pub use datastore::DataStore;
+pub use triplestore::TripleStore;
 pub use namespaces::Namespace;
-pub use quads::Quad;
 pub use triples::Triple;
-pub use traits::{IntoTriple, IntoTriples, WriteTriG};
+pub use traits::WriteTriG;
 
 use std::hash::BuildHasherDefault;
 use ahash::AHasher;
@@ -197,7 +200,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 //     #[test]
 //     fn test_into_triple() {
-//         let mut ds = DataStore::new();
+//         let mut ds = TripleStore::new();
 //         ds.add_triple(MyTriple {id: 420, value: "It smells"});
 
 //         let mut buf = Vec::new();
@@ -213,7 +216,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 //     #[test]
 //     fn test_add_triple_to_quad() {
-//         let mut ds = DataStore::new();
+//         let mut ds = TripleStore::new();
 //         // Can be updated to be a wrapper around an IriNode! 🤦‍♂️
 //         let my_graph = Graph::new(ARIADNEPLUS, "MyGraph");
 //         let graph_id = ds.add_graph(my_graph);
@@ -235,7 +238,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 //     #[test]
 //     fn test_add_triple_to_quad_with_escape_chars() {
-//         let mut ds = DataStore::new();
+//         let mut ds = TripleStore::new();
         
 //         let my_graph = Graph::new(ARIADNEPLUS, "My\tEscaped Graph");
 //         let graph_id = ds.add_graph(my_graph);
@@ -262,7 +265,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 //     #[test]
 //     fn test_add_triple_with_non_string_literal() {
-//         let mut ds = DataStore::new();
+//         let mut ds = TripleStore::new();
         
 //         let my_graph = Graph::new(ARIADNEPLUS, "My\rEscaped Graph");
 //         let graph_id = ds.add_graph(my_graph);
@@ -288,13 +291,13 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 
 //     #[test]
 //     fn test_escaped_prefix() {
-//         let mut ds = DataStore::new();
+//         let mut ds = TripleStore::new();
 
 //         let triple = Triple::new(
 //             Subject::iri_with_new_namespace(
 //                 "odd~ prefix", 
 //                 "https://www.w3.org/TR/rdf12-schema/#",
-//                 "my_endpoint"
+//                 "my_local_name"
 //             ).unwrap(),
 //             Predicate::new(FOAF, "is_friends_with"),
 //             Object::blank("blank_id")
@@ -316,7 +319,7 @@ pub(crate) type FastIndexSet<T> = indexmap::IndexSet<T, BuildHasherDefault<AHash
 //             "@prefix odd\\~prefix: <https://www.w3.org/TR/rdf12-schema/#> .\n"
 //         ));
 //         assert!(as_str.contains(
-//             r"odd\~prefix:my_endpoint foaf:is_friends_with _:blank_id ."
+//             r"odd\~prefix:my_local_name foaf:is_friends_with _:blank_id ."
 //         ));
 //     }
 // }

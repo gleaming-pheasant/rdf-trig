@@ -13,14 +13,14 @@ use std::io::{self, Write};
 use crate::nodes::StagingNode;
 use crate::nodes::subject::Subject;
 use crate::nodes::object::Object;
-use crate::traits::{ToInterned, WriteTriG};
+use crate::traits::{ToStatic, WriteTriG};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 
 /// caller to manage any corresponding `Predicate`s and `Object`s.
 /// 
 /// No character escaping is done on the label before or during construction.
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct BlankNode<'a>(Cow<'a, str>);
 
 impl<'a> BlankNode<'a> {
@@ -49,11 +49,11 @@ impl<'a> Into<Subject<'a>> for BlankNode<'a> {
     }
 }
 
-impl<'a> ToInterned for BlankNode<'a> {
-    type InternedType = BlankNode<'static>;
+impl<'a> ToStatic for BlankNode<'a> {
+    type StaticType = BlankNode<'static>;
 
     #[inline]
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         BlankNode(Cow::Owned(self.0.clone().into_owned()))
     }
 }

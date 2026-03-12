@@ -1,41 +1,72 @@
 use std::borrow::Cow;
+use std::io::{self, Write};
 
-
-use crate::namespaces::{Namespace, NamespaceId};
-use crate::nodes::{Object, Predicate, Subject, StagingNode};
-use crate::traits::ToInterned;
+use crate::WriteTriG;
+use crate::namespaces::{Namespace};
+use crate::namespaces::store::{NamespaceId, NamespaceStore};
+use crate::nodes::{Graph, Object, Predicate, StagingNode, Subject};
+use crate::traits::ToStatic;
+use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// An `IriNode` is composed of a [`Namespace`] (to allow assigning the iri to a 
-/// shared iri using a `prefix`) and an `endpoint`.
+/// shared iri using a `prefix`) and a `local_name`.
 /// 
-/// An `IriNode` can be used as a [`Subject`], [`Predicate`] or [`Object`] so 
-/// this struct implements [`Into`] for all three node varieties.
-#[derive(Debug, Eq, Hash, PartialEq)]
+/// An `IriNode` can be used as a [`Subject`], [`Predicate`], [`Object`] or 
+/// [`Graph`]; this struct implements [`Into`] for all of these types.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct IriNode<'a> {
-    namespace: Namespace<'a>,
-    endpoint: Cow<'a, str>
+    pub(crate) namespace: Namespace<'a>,
+    pub(crate) local_name: Cow<'a, str>
 }
 
 impl<'a> IriNode<'a> {
-    /// Create a new [`IriNode`].
-    pub(crate) fn new<C: Into<Cow<'a, str>>>(
-        namespace: Namespace<'a>, endpoint: C
+    /// Create a new `IriNode`.
+    pub fn new<C: Into<Cow<'a, str>>>(
+        namespace: Namespace<'a>, local_name: C
     ) -> IriNode<'a> {
-        IriNode { namespace, endpoint: endpoint.into() }
+        IriNode { namespace, local_name: local_name.into() }
     }
 
     /// Allows you to create a new `IriNode` which is composed of static values 
-    /// known at compile time, exported via [`Predicate`](crate::nodes::Predicate).
+    /// known at compile time, exported via [`Predicate`].
+    /// 
+    /// This function is private in order to prevent users bypassing URL 
+    /// validation on creation.
     pub(crate) const fn new_const(
-        namespace: Namespace<'static>, endpoint: &'static str
+        namespace: Namespace<'static>, local_name: &'static str
     ) -> IriNode<'static> {
-        IriNode { namespace, endpoint: Cow::Borrowed(endpoint) }
+        IriNode { namespace, local_name: Cow::Borrowed(local_name) }
+    }
+
+    /// Get a reference to this `IriNode`'s `local_name`.
+    pub fn local_name(&'a self) -> &'a str {
+        &self.local_name
     }
 
     /// Consume this `IriNode`, returning a tuple of its `namespace` and 
-    /// `endpoint`.
-    pub(crate) fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
-        (self.namespace, self.endpoint)
+    /// `local_name`.
+    pub fn into_parts(self) -> (Namespace<'a>, Cow<'a, str>) {
+        (self.namespace, self.local_name)
+    }
+
+    /// Serves as a custom implementation of [`Into<StagingNode<'a>>`] for an 
+    /// `IriNode`, which takes in a mutable reference to a [`NamespaceStore`] in 
+    /// order to retrieve the [`NamespaceId`] for an interened `Namespace`.
+    pub(crate) fn into_staging(
+        self, store: &mut NamespaceStore
+    ) -> StagingNode<'a> {
+        let namespace_id = store.intern_namespace(self.namespace);
+
+        StagingNode::Iri(StagingIriNode {
+            namespace_id, local_name: self.local_name
+        })
+    }
+}
+
+impl<'a> Into<Graph<'a>> for IriNode<'a> {
+    #[inline]
+    fn into(self) -> Graph<'a> {
+        Graph(self)
     }
 }
 
@@ -49,7 +80,7 @@ impl<'a> Into<Object<'a>> for IriNode<'a> {
 impl<'a> Into<Predicate<'a>> for IriNode<'a> {
     #[inline]
     fn into(self) -> Predicate<'a> {
-        Predicate::new(self)
+        Predicate(self)
     }
 }
 
@@ -60,24 +91,56 @@ impl<'a> Into<Subject<'a>> for IriNode<'a> {
     }
 }
 
-/// An [`IriNode`] that stores an already interned 
-/// [`Namespace`](crate::namespaces::Namespace)'s `NamespaceId`.
+impl<'a> ToStatic for IriNode<'a> {
+    type StaticType = IriNode<'static>;
+
+    #[inline]
+    fn to_static(&self) -> Self::StaticType {
+        IriNode {
+            namespace: self.namespace.to_static(),
+            local_name: Cow::Owned(self.local_name.clone().into_owned())
+        }
+    }
+}
+
+impl<'a> WriteTriG for IriNode<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        write_escaped_local_name(writer, &self.namespace.prefix())?;
+        writer.write_all(b":")?;
+        write_escaped_url_component(writer, &self.local_name)?;
+
+        Ok(())
+    }
+}
+
+/// An [`IriNode`] that stores an already interned [`Namespace`]'s `NamespaceId`.
 /// 
 /// This type still retains its lifetime, as it can still reference a temporary 
-/// value prior to the interning of the node itself.
+/// value prior to interning the node itself.
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) struct StagingIriNode<'a> {
     namespace_id: NamespaceId,
-    endpoint: Cow<'a, str>
+    local_name: Cow<'a, str>
 }
 
 impl<'a> StagingIriNode<'a> {
-    /// Create a new `StagingIriNode` from a retrieved [`NamespaceId`] and an 
-    /// `endpoint`.
+    /// Create a new `StagingIriNode` from a retrieved [`NamespaceId`] and a 
+    /// `local_name`.
     pub(crate) fn new(
-        namespace_id: NamespaceId, endpoint: Cow<'a, str>
+        namespace_id: NamespaceId, local_name: Cow<'a, str>
     ) -> StagingIriNode<'a> {
-        StagingIriNode { namespace_id, endpoint }
+        StagingIriNode { namespace_id, local_name }
+    }
+
+    /// Create a new `StagingIriNode` from pre-known and 'static values. Only 
+    /// accessible within this crate to register the default graph.
+    pub(crate) fn new_const(
+        namespace_id: NamespaceId, local_name: &'static str
+    ) -> StagingIriNode<'static> {
+        StagingIriNode {
+            namespace_id,
+            local_name: local_name.into()
+        }
     }
 
     /// Get the `namespace_id` for this `StagingIriNode`.
@@ -85,29 +148,20 @@ impl<'a> StagingIriNode<'a> {
         self.namespace_id
     }
 
-    /// Get a reference to the `endpoint` for this `StagingIriNode`.
-    pub(crate) fn endpoint(&self) -> &str {
-        &self.endpoint
+    /// Get a reference to the `local_name` for this `StagingIriNode`.
+    pub(crate) fn local_name(&self) -> &str {
+        &self.local_name
     }
-
-    // pub(crate) fn to_interned(&self) -> InternedIriNode {
-    //     InternedIriNode(
-    //         StagingIriNode {
-    //             namespace_id: self.namespace_id.clone(),
-    //             endpoint: Cow::Owned(self.endpoint.to_string())
-    //         }
-    //     )
-    // }
 }
 
-impl<'a> ToInterned for StagingIriNode<'a> {
-    type InternedType = StagingIriNode<'static>;
+impl<'a> ToStatic for StagingIriNode<'a> {
+    type StaticType = StagingIriNode<'static>;
 
     #[inline]
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         StagingIriNode {
             namespace_id: self.namespace_id(),
-            endpoint: Cow::Owned(self.endpoint.clone().into_owned())
+            local_name: Cow::Owned(self.local_name.clone().into_owned())
         }
     }
 }

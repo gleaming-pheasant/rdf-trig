@@ -9,11 +9,17 @@ use crate::nodes::literals::LiteralNode;
 /// those types.
 /// 
 /// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
-/// [`DataStore`](crate::datastore::DataStore), this struct serves no practical 
+/// [`TripleStore`](crate::datastore::TripleStore), this struct serves no practical 
 /// purpose.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Object<'a> {
     Blank(BlankNode<'a>),
     Iri(IriNode<'a>),
     Literal(LiteralNode<'a>)
+}
+
+impl<'a> From<&Object<'a>> for Object<'a> {
+    fn from(o: &Object<'a>) -> Self {
+        o.clone()
+    }
 }

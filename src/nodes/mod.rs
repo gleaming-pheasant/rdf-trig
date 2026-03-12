@@ -6,8 +6,9 @@
 //! Each node type contains either native types of known size or `Cow<'a, str>` 
 //! which allow for references to be used to prevent allocation if a node has 
 //! already been interned. A 'static or Owned lifetime is coerced on interning 
-//! of the node (storing it in a `DataStore`).
+//! of the node (storing it in a `TripleStore`).
 mod blank;
+mod graph;
 mod iri;
 mod literals;
 mod object;
@@ -16,6 +17,7 @@ mod subject;
 mod store;
 
 pub use blank::BlankNode;
+pub use graph::Graph;
 pub use iri::IriNode;
 pub(crate) use iri::StagingIriNode;
 pub use literals::{
@@ -31,7 +33,9 @@ pub use predicate::Predicate;
 pub use subject::Subject;
 pub(crate) use store::{NodeId, NodeStore};
 
-use crate::traits::ToInterned;
+use std::io::{self, Write};
+
+use crate::{WriteTriG, traits::ToStatic};
 
 /// An enumerator over the three node types used in RDF: blank, IRI and literal.
 #[derive(Debug)]
@@ -39,6 +43,16 @@ pub(crate) enum Node<'a> {
     Blank(BlankNode<'a>),
     Iri(IriNode<'a>),
     Literal(LiteralNode<'a>)
+}
+
+impl<'a> WriteTriG for Node<'a> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            Node::Blank(blank) => blank.write_trig(writer),
+            Node::Iri(iri) => iri.write_trig(writer),
+            Node::Literal(literal) => literal.write_trig(writer)
+        }
+    }
 }
 
 /// Serves as a wrapper around the same types as [`Node`], with the exception 
@@ -51,17 +65,17 @@ pub(crate) enum StagingNode<'a> {
     Literal(LiteralNode<'a>)
 }
 
-impl<'a> ToInterned for StagingNode<'a> {
-    type InternedType = StagingNode<'static>;
+impl<'a> ToStatic for StagingNode<'a> {
+    type StaticType = StagingNode<'static>;
 
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         match self {
             StagingNode::Blank(blank) => {
-                StagingNode::Blank(blank.to_interned())
+                StagingNode::Blank(blank.to_static())
             },
-            StagingNode::Iri(iri) => StagingNode::Iri(iri.to_interned()),
+            StagingNode::Iri(iri) => StagingNode::Iri(iri.to_static()),
             StagingNode::Literal(literal) => {
-                StagingNode::Literal(literal.to_interned())
+                StagingNode::Literal(literal.to_static())
             }
         }
     }

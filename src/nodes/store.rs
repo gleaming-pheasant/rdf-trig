@@ -1,9 +1,8 @@
 use std::ops::Deref;
 
 use crate::FastIndexSet;
-use crate::namespaces::DEFAULT_GRAPH_NAMESPACE_ID;
-use crate::nodes::{StagingIriNode, StagingNode};
-use crate::traits::ToInterned;
+use crate::nodes::StagingNode;
+use crate::traits::ToStatic;
 
 /// A `NodeId` is a wrapper around a `u32` and is only retrievable by converting 
 /// the `usize` index from an [`IndexSet`](indexmap::IndexSet) (or a 
@@ -12,7 +11,7 @@ use crate::traits::ToInterned;
 /// This will cause the application to panic if the number of interned nodes 
 /// exceeds [`u32::MAX`].
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct NodeId(u32);
+pub(crate) struct NodeId(pub(crate) u32);
 
 impl NodeId {
     /// Create a new `NodeId` by casting the provided `usize` to a `u32`.
@@ -33,10 +32,6 @@ impl Deref for NodeId {
     }
 }
 
-/// The reserved `NodeId` for the default graph's IRI; is set to contain 0 on 
-/// initialisation of the [`NodeStore`].
-pub(crate) const DEFAULT_GRAPH_NODE_ID: NodeId = NodeId(0);
-
 /// A wrapper around a [`FastIndexSet<StagingNode>`] which serves to store 
 /// unique "nodes" and hand out [`NodeId`]s as references to the 
 /// interned [`StagingNode`]s.
@@ -45,28 +40,18 @@ pub(crate) struct NodeStore(FastIndexSet<StagingNode<'static>>);
 
 impl NodeStore {
     /// Create a new `NodeStore`.
-    /// 
-    /// This function initialises an [`indexmap::IndexSet`] (or [`FastIndexSet`] 
-    /// for the purposes of this crate) and inserts a default graph's IRI node 
-    /// to guarantee that index 0 is the default graph.
     pub(crate) fn new() -> NodeStore {
-        let mut ix_set = FastIndexSet::default();
-
-        ix_set.insert(StagingNode::Iri(
-            StagingIriNode::new(DEFAULT_GRAPH_NAMESPACE_ID, "".into()))
-        );
-
-        NodeStore(ix_set)
+        NodeStore(FastIndexSet::default())
     }
 
     /// Add a `StagingNode` to this `NodeStore`, returning a `NodeId`.
     /// 
-    /// You must retrieve a `StagingNode` from this crate's main `DataStore`, to 
+    /// You must retrieve a `StagingNode` from this crate's main `TripleStore`, to 
     /// ensure that the `Namespace` for any `IriNode`s has been interened.
     /// 
-    /// This crate uses a trait called [`ToInterned`](crate::traits::ToInterned) 
-    /// to coerce `'static` lifetimes for any borrowed items during `DataStore` 
-    /// building. Therefore, this function calls `to_interned()` - resulting in 
+    /// This crate uses a trait called [`ToStatic`](crate::traits::ToStatic) 
+    /// to coerce `'static` lifetimes for any borrowed items during `TripleStore` 
+    /// building. Therefore, this function calls `to_static()` - resulting in 
     /// potential allocations - only when it has been established that a Node 
     /// has not already been interned.
     pub(crate) fn intern_node<'a>(&mut self, node: StagingNode<'a>) -> NodeId {
@@ -74,7 +59,7 @@ impl NodeStore {
             return NodeId::from(ix)
         }
 
-        NodeId::from(self.0.insert_full(node.to_interned()).0)
+        NodeId::from(self.0.insert_full(node.to_static()).0)
     }
 
     /// Retrieve a `StagingNode` reference from the provided `NodeId`.

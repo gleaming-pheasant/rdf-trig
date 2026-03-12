@@ -10,7 +10,7 @@ use time::macros::format_description;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
-use crate::traits::{ToInterned, WriteTriG};
+use crate::traits::{ToStatic, WriteTriG};
 
 const FMT_NAIVE_SUBSECOND: &[time::format_description::FormatItem<'_>] = 
     format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]");
@@ -26,7 +26,7 @@ const FMT_NAIVE_ISO: &[time::format_description::FormatItem<'_>] =
 /// 
 /// This crate uses `time` to validate XML Schema `dateTime`s, but stores the 
 /// values as `Cow`s to avoid excessive parsing then formatting.
-#[derive(Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct DateTimeLiteral<'a>(pub(crate) Cow<'a, str>);
 
 impl<'a> DateTimeLiteral<'a> {
@@ -137,11 +137,11 @@ impl<'a> Into<Object<'a>> for DateTimeLiteral<'a> {
     }
 }
 
-impl<'a> ToInterned for DateTimeLiteral<'a> {
-    type InternedType = DateTimeLiteral<'static>;
+impl<'a> ToStatic for DateTimeLiteral<'a> {
+    type StaticType = DateTimeLiteral<'static>;
 
     #[inline]
-    fn to_interned(&self) -> Self::InternedType {
+    fn to_static(&self) -> Self::StaticType {
         DateTimeLiteral(Cow::Owned(self.0.clone().into_owned()))
     }
 }
