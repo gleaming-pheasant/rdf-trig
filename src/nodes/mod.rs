@@ -33,27 +33,7 @@ pub use predicate::Predicate;
 pub use subject::Subject;
 pub(crate) use store::{NodeId, NodeStore};
 
-use std::io::{self, Write};
-
-use crate::{WriteTriG, traits::ToStatic};
-
-/// An enumerator over the three node types used in RDF: blank, IRI and literal.
-#[derive(Debug)]
-pub(crate) enum Node<'a> {
-    Blank(BlankNode<'a>),
-    Iri(IriNode<'a>),
-    Literal(LiteralNode<'a>)
-}
-
-impl<'a> WriteTriG for Node<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        match self {
-            Node::Blank(blank) => blank.write_trig(writer),
-            Node::Iri(iri) => iri.write_trig(writer),
-            Node::Literal(literal) => literal.write_trig(writer)
-        }
-    }
-}
+use crate::traits::ToStatic;
 
 /// Serves as a wrapper around the same types as [`Node`], with the exception 
 /// that the Iri variant is a [`StagedIriNode`], that is one which has already 

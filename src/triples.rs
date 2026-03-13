@@ -68,6 +68,11 @@ impl<'a> Triple<'a> {
 /// It takes a [`NodeId`] for each of the `subject`, `predicate` and `object`and 
 /// effectively takes advantage of zero-cost abstraction to serve as a labelled 
 /// tuple over already-interned nodes.
+/* The use of Option here is one of the few places where performance hasn't been 
+top priority. Using a "DefaultGraph" with a pre-indexed Id of 0 would be more 
+performant than not wrapping `Node`s in `Option`s based purely on memory 
+overhead, of wrapping it in the enum, but it made for a very disjointed, hard to 
+maintain crate. */
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub(crate) struct InternedTriple {
     graph: Option<NodeId>,
@@ -123,8 +128,25 @@ impl InternedTripleStore {
     /// As each element of a triple is a [`NodeId`], which derives [`Clone`] and 
     /// [`Copy`] for the contained [`u32`], this differs from a `NodeStore` and 
     /// `NamespaceStore` in that it does not risk allocation of any types.
-    pub(crate) fn intern_triple(&mut self, triple: InternedTriple) -> InternedTripleId {
+    pub(crate) fn intern_triple(
+        &mut self, triple: InternedTriple
+    ) -> InternedTripleId {
         InternedTripleId::from(self.0.insert_full(triple).0)
+    }
+
+    /// Retrieve an `InternedTriple` reference from the provided 
+    /// `InternedTripleId`.
+    /// 
+    /// Use of [`Option::unwrap`] is considered safe in this function, as the 
+    /// crate only allows the generation of `InternedTripleId`s is only through 
+    /// [`Self::intern_triple`].
+    /// 
+    /// Any future functionality that allows removal of items from `...Store`s 
+    /// must address this.
+    pub(crate) fn query_triple(
+        &self, triple_id: InternedTripleId
+    ) -> &InternedTriple {
+        self.0.get_index(*triple_id as usize).unwrap()
     }
 }
 

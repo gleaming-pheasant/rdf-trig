@@ -90,8 +90,10 @@ impl NamespaceStore {
 
     /// Retrieve a reference to a `Namespace` from this `NamespaceStore` using 
     /// the provided `NamespaceId`.
-    pub(crate) fn query_namespace(&self, ns_id: NamespaceId) -> &Namespace {
-        self.0.get_index(*ns_id as usize).unwrap()
+    pub(crate) fn query_namespace(
+        &self, namespace_id: NamespaceId
+    ) -> &Namespace {
+        self.0.get_index(*namespace_id as usize).unwrap()
     }
 
     /// Query the `NamespaceStore` for existing `Namespace`s with the same 

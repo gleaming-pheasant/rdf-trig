@@ -1,12 +1,9 @@
 use std::borrow::Cow;
-use std::io::{self, Write};
 
-use crate::WriteTriG;
 use crate::namespaces::{Namespace};
 use crate::namespaces::store::{NamespaceId, NamespaceStore};
 use crate::nodes::{Graph, Object, Predicate, StagingNode, Subject};
 use crate::traits::ToStatic;
-use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// An `IriNode` is composed of a [`Namespace`] (to allow assigning the iri to a 
 /// shared iri using a `prefix`) and a `local_name`.
@@ -100,16 +97,6 @@ impl<'a> ToStatic for IriNode<'a> {
             namespace: self.namespace.to_static(),
             local_name: Cow::Owned(self.local_name.clone().into_owned())
         }
-    }
-}
-
-impl<'a> WriteTriG for IriNode<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        write_escaped_local_name(writer, &self.namespace.prefix())?;
-        writer.write_all(b":")?;
-        write_escaped_url_component(writer, &self.local_name)?;
-
-        Ok(())
     }
 }
 
