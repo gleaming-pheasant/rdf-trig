@@ -27,7 +27,8 @@ impl<'a> LangStringLiteral<'a> {
     {
         let language = language.into();
 
-        if !language.len() == 2 || !language.chars().all(char::is_alphabetic) {
+        if !(language.len() == 2 || language.len() == 3) ||
+        !language.chars().all(char::is_alphabetic) {
             return Err(RdfTrigError::InvalidLanguage(language.to_string()))
         }
 

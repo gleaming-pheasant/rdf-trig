@@ -13,14 +13,16 @@ use crate::nodes::literals::LiteralNode;
 /// standard [`ToString`] values of "true" or "false" - regardless of the input 
 /// value - in order to reduce memory usage.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct BooleanLiteral(bool);
+pub struct BooleanLiteral(pub(crate) bool);
 
 impl BooleanLiteral {
     /// Create a new `BooleanLiteral` from a `str` type value.
     /// 
     /// The given value must be either "true", "false", "1" or "0", or it will 
     /// return an error.
-    pub fn from_str<'a, C: Into<Cow<'a, str>>>(value: C)
+    /// 
+    // This is a custom function (not TryFrom), to accept Into<Cow...> values. 
+    pub fn try_from_str<'a, C: Into<Cow<'a, str>>>(value: C)
     -> Result<BooleanLiteral, RdfTrigError> {
         let value = value.into();
         match &*value {
@@ -49,6 +51,18 @@ impl From<bool> for BooleanLiteral {
     #[inline]
     fn from(value: bool) -> Self {
         BooleanLiteral(value)
+    }
+}
+
+impl TryFrom<u8> for BooleanLiteral {
+    type Error = RdfTrigError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(BooleanLiteral(false)),
+            1 => Ok(BooleanLiteral(true)),
+            _ => Err(RdfTrigError::InvalidBoolean(value.to_string()))
+        }
     }
 }
 

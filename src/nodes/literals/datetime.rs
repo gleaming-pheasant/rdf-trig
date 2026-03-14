@@ -35,7 +35,8 @@ impl<'a> DateTimeLiteral<'a> {
     /// Returns an `RdfTrigError::InvalidDateTime` if the provided value cannot 
     /// be parsed as an XML Schema `dateTime` ("1900-01-01T00:00:00.000", with 
     /// or without "Z" or a timezone offset).
-    pub fn from_str<C: Into<Cow<'a, str>>>(value: C)
+    // Custom function instead of TryFrom to allow Into<Cow...> values.
+    pub fn try_from_str<C: Into<Cow<'a, str>>>(value: C)
     -> Result<DateTimeLiteral<'a>, RdfTrigError> {
         let value = value.into();
 

@@ -21,7 +21,7 @@ pub struct GYearLiteral(i32);
 impl GYearLiteral {
     /// Create a new `GYearLiteral` from a `str`-like type. The `str` must be 
     /// parsable as an `i32` or this function will return an error.
-    pub fn from_str<'a, C: Into<Cow<'a, str>>>(value: C)
+    pub fn try_from_str<'a, C: Into<Cow<'a, str>>>(value: C)
     -> Result<GYearLiteral, RdfTrigError> {
         let value = value.into();
         if let Ok(year) = value.parse::<i32>() {

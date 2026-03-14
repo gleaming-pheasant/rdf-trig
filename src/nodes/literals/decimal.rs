@@ -36,7 +36,7 @@ impl Hash for DecimalLiteral {
 impl DecimalLiteral {
     /// Create a new `DecimalLiteral` from a `str`-like type. The `str` must be 
     /// parsable as an `f32` or this function will return an error.
-    pub fn from_str<'a, C: Into<Cow<'a, str>>>(value: C)
+    pub fn try_from_str<'a, C: Into<Cow<'a, str>>>(value: C)
     -> Result<DecimalLiteral, RdfTrigError> {
         let value = value.into();
         
@@ -76,5 +76,5 @@ impl WriteTriG for DecimalLiteral {
             writer.write_all(b".")?;
         }
         Ok(())
-    }    
+    }
 }
