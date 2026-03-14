@@ -111,25 +111,6 @@ pub(crate) struct StagingIriNode<'a> {
 }
 
 impl<'a> StagingIriNode<'a> {
-    /// Create a new `StagingIriNode` from a retrieved [`NamespaceId`] and a 
-    /// `local_name`.
-    pub(crate) fn new(
-        namespace_id: NamespaceId, local_name: Cow<'a, str>
-    ) -> StagingIriNode<'a> {
-        StagingIriNode { namespace_id, local_name }
-    }
-
-    /// Create a new `StagingIriNode` from pre-known and 'static values. Only 
-    /// accessible within this crate to register the default graph.
-    pub(crate) fn new_const(
-        namespace_id: NamespaceId, local_name: &'static str
-    ) -> StagingIriNode<'static> {
-        StagingIriNode {
-            namespace_id,
-            local_name: local_name.into()
-        }
-    }
-
     /// Get the `namespace_id` for this `StagingIriNode`.
     pub(crate) fn namespace_id(&self) -> NamespaceId {
         self.namespace_id
@@ -160,6 +141,3 @@ impl<'a> Into<StagingNode<'a>> for StagingIriNode<'a> {
         StagingNode::Iri(self)
     }
 }
-
-#[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) struct InternedIriNode(pub StagingIriNode<'static>);

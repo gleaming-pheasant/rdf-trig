@@ -48,7 +48,7 @@ impl TripleStore {
 
     /// Add a `Triple` (or impl [`IntoTriple`]) to this `TripleStore`.
     pub fn add_triple<'a, T: Into<Triple<'a>>>(&mut self, triple: T) {
-        let triple = self.intern_nodes_from_triple(triple.into());
+        let triple = self.intern_triple(triple.into());
         
         // Get a clone of the `NodeId` for the graph for adding to the index.
         let graph_id = triple.graph();
@@ -62,12 +62,30 @@ impl TripleStore {
     /// Add all of the "nodes" in the provided `Triple` to this `TripleStore`'s 
     /// [`NodeStore`], returning an [`InternedTriple`] wrapper around the 
     /// [`NodeID`] for each "node".
-    fn intern_nodes_from_triple(
+    fn intern_triple(
         &mut self, triple: Triple<'_>
     ) -> InternedTriple {
+        let ns_store = &mut self.namespaces;
         let (graph, subject, predicate, object) = triple.into_parts();
 
-        
+        let graph = graph.map(|g| g.into_staging_node(ns_store));
+        let subject = subject.into_staging_node(ns_store);
+        let predicate = predicate.into_staging_node(ns_store);
+        let object = object.into_staging_node(ns_store);
+
+        let graph = graph.map(|sg| self.intern_node(sg));
+        let subject = self.intern_node(subject);
+        let predicate = self.intern_node(predicate);
+        let object = self.intern_node(object);
+
+        InternedTriple::new(
+            graph, subject, predicate, object
+        )
+    }
+
+    /// Add a [`StagingNode`] to the [`NodeStore`] of this `TripleStore`.
+    fn intern_node<'a>(&mut self, staging_node: StagingNode<'a>) -> NodeId {
+        self.nodes.intern_node(staging_node)
     }
 
     /// Retrieve a [`NodeView`] for the given [`NodeId`].
@@ -88,7 +106,7 @@ impl TripleStore {
     /// Retrieve a reference to a [`Namespace`] for the given [`NamespaceId`].
     fn resolve_namespace(
         &self, namespace_id: NamespaceId
-    ) -> &Namespace {
+    ) -> &Namespace<'static> {
         self.namespaces.query_namespace(namespace_id)
     }
 

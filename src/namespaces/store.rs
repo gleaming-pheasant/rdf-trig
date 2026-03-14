@@ -92,7 +92,7 @@ impl NamespaceStore {
     /// the provided `NamespaceId`.
     pub(crate) fn query_namespace(
         &self, namespace_id: NamespaceId
-    ) -> &Namespace {
+    ) -> &Namespace<'static> {
         self.0.get_index(*namespace_id as usize).unwrap()
     }
 
@@ -107,7 +107,7 @@ impl NamespaceStore {
     /// namespaces/prefixes are typically small in number.
     pub(crate) fn query_existing_prefix(
         &self, ns: &Namespace
-    ) -> Option<&Namespace> {
+    ) -> Option<&Namespace<'static>> {
         self.0.iter().find(|this_ns| {
             this_ns.prefix() == ns.prefix()
         })

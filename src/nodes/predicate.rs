@@ -1,8 +1,7 @@
-use std::ops::Deref;
-
 use crate::namespaces::Namespace;
 use crate::namespaces::statics::{AOCAT, RDF, RDFS, SKOS};
-use crate:: nodes::IriNode;
+use crate::namespaces::store::NamespaceStore;
+use crate::nodes::{IriNode, StagingNode};
 use crate::traits::ToStatic;
 
 /// A `Predicate` forms the middle part of any `Triple`, establishing the 
@@ -28,20 +27,19 @@ impl<'a> Predicate<'a> {
     ) -> Predicate<'a> {
         Predicate(IriNode::new_const(namespace, local_name))
     }
+
+    /// Convert this `Predicate` into a [`StagingNode`], using the provided 
+    /// [`NamepaceStore`] to intern the `Namespace`.
+    pub(crate) fn into_staging_node(
+        self, namespace_store: &mut NamespaceStore
+    ) -> StagingNode<'a> {
+        self.0.into_staging(namespace_store)
+    }
 }
 
 impl<'a> From<&Predicate<'a>> for Predicate<'a> {
     fn from(p: &Predicate<'a>) -> Self {
         p.clone()
-    }
-}
-
-impl<'a> Deref for Predicate<'a> {
-    type Target = IriNode<'a>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
