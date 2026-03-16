@@ -12,6 +12,12 @@ pub const AOCAT: Namespace = Namespace::new_const(
     "aocat", "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/"
 );
 
+/// A namespace for graphs forming part of the 
+/// [ARIADNE portal](https://portal.ariadne-infrastructure.eu/).
+pub const ARIADNEAPI: Namespace = Namespace::new_const(
+    "ariadneapi", "https://ariadne-infrastructure.eu/"
+);
+
 /// A namespace for [ARIADNE](https://portal.ariadne-infrastructure.eu/) resources.
 pub const ARIADNEPLUS: Namespace = Namespace::new_const(
     "ariadneplus", "https://ariadne-infrastructure.eu/aocat/"
@@ -30,6 +36,11 @@ pub const DC: Namespace = Namespace::new_const(
 /// Dublin Core's [terms](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#section-2) schema.
 pub const DCTERMS: Namespace = Namespace::new_const(
     "dcterms", "http://purl.org/dc/terms/"
+);
+
+/// Terms used by [SPARQL 1.1](https://www.w3.org/ns/sparql#).
+pub const SPARQL: Namespace = Namespace::new_const(
+    "sparql", "http://www.w3.org/ns/sparql#"
 );
 
 /// The [Friend-of-a-Friend](https://xmlns.com/foaf/spec/) ontology.

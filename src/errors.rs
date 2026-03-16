@@ -1,17 +1,14 @@
-//! Contains errors that can be returned by verifying types.
-use std::borrow::Cow;
-
 #[derive(Clone, Debug)]
-pub enum RdfTrigError<'a> {
-    InvalidBoolean(Cow<'a, str>),
-    InvalidDateTime(Cow<'a, str>),
-    InvalidDecimal(Cow<'a, str>),
-    InvalidGYear(Cow<'a, str>),
-    InvalidIri(Cow<'a, str>),
-    InvalidLanguage(Cow<'a, str>)
+pub enum RdfTrigError {
+    InvalidBoolean(String),
+    InvalidDateTime(String),
+    InvalidDecimal(String),
+    InvalidGYear(String),
+    InvalidIri(String),
+    InvalidLanguage(String)
 }
 
-impl<'a> std::fmt::Display for RdfTrigError<'a> {
+impl std::fmt::Display for RdfTrigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RdfTrigError::InvalidBoolean(bool) => {
@@ -36,7 +33,7 @@ impl<'a> std::fmt::Display for RdfTrigError<'a> {
     }
 }
 
-impl<'a> std::error::Error for RdfTrigError<'a> {
+impl std::error::Error for RdfTrigError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         // Update if any external errors are required.
         None

@@ -1,7 +1,56 @@
-//! A collection of static [`Predicate`]s for widely used predicates for 
-//! existing static [`Namespace`](crate::namespaces::Namespace)s.
+use crate::namespaces::Namespace;
 use crate::namespaces::statics::{AOCAT, RDF, RDFS, SKOS};
-use crate::nodes::Predicate;
+use crate::namespaces::store::NamespaceStore;
+use crate::nodes::{IriNode, StagingNode};
+use crate::traits::ToStatic;
+
+/// A `Predicate` forms the middle part of any `Triple`, establishing the 
+/// relationship between a `Subject` and an `Object`.
+/// 
+/// A `Predicate` can only be an `IriNode`, therefore, it can only be 
+/// constructed using [`Into<Predicate>`] from an `IriNode`.
+/// 
+/// Because many `Predicate`s are frequently reused, many `const` `Predicate`s 
+/// are exported alongside this struct.
+/// 
+/// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
+/// [`TripleStore`](crate::datastore::TripleStore), this struct serves no practical 
+/// purpose.
+#[derive(Clone, Debug)]
+pub struct Predicate<'a>(pub(crate) IriNode<'a>);
+
+impl<'a> Predicate<'a> {
+    /// Create a new `Predicate` from 'static values. Only accessible within 
+    /// this crate to bypass IRI validation.
+    pub(crate) const fn new_const(
+        namespace: Namespace<'static>, local_name: &'static str
+    ) -> Predicate<'a> {
+        Predicate(IriNode::new_const(namespace, local_name))
+    }
+
+    /// Convert this `Predicate` into a [`StagingNode`], using the provided 
+    /// [`NamepaceStore`] to intern the `Namespace`.
+    pub(crate) fn into_staging_node(
+        self, namespace_store: &mut NamespaceStore
+    ) -> StagingNode<'a> {
+        self.0.into_staging(namespace_store)
+    }
+}
+
+impl<'a> From<&Predicate<'a>> for Predicate<'a> {
+    fn from(p: &Predicate<'a>) -> Self {
+        p.clone()
+    }
+}
+
+impl<'a> ToStatic for Predicate<'a> {
+    type StaticType = Predicate<'static>;
+
+    #[inline]
+    fn to_static(&self) -> Self::StaticType {
+        Predicate(self.0.to_static())
+    }
+}
 
 /// aocat:from
 pub const AOCAT_FROM: Predicate = Predicate::new_const(
