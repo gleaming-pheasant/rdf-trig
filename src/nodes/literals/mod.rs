@@ -64,6 +64,13 @@ impl<'a> Into<Object<'a>> for LiteralNode<'a> {
     }
 }
 
+impl<'a> Into<Object<'a>> for &'a LiteralNode<'a> {
+    #[inline]
+    fn into(self) -> Object<'a> {
+        Object::Literal(self.clone())
+    }
+}
+
 impl<'a> Into<StagingNode<'a>> for LiteralNode<'a> {
     /// Wrap this `LiteralNode` as a `StagedNode` in preparation for interning.
     #[inline]

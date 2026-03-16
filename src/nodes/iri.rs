@@ -88,6 +88,34 @@ impl<'a> Into<Subject<'a>> for IriNode<'a> {
     }
 }
 
+impl<'a> Into<Graph<'a>> for &'a IriNode<'a> {
+    #[inline]
+    fn into(self) -> Graph<'a> {
+        Graph(self.clone())
+    }
+}
+
+impl<'a> Into<Object<'a>> for &'a IriNode<'a> {
+    #[inline]
+    fn into(self) -> Object<'a> {
+        Object::Iri(self.clone())
+    }
+}
+
+impl<'a> Into<Predicate<'a>> for &'a IriNode<'a> {
+    #[inline]
+    fn into(self) -> Predicate<'a> {
+        Predicate(self.clone())
+    }
+}
+
+impl<'a> Into<Subject<'a>> for &'a IriNode<'a> {
+    #[inline]
+    fn into(self) -> Subject<'a> {
+        Subject::Iri(self.clone())
+    }
+}
+
 impl<'a> ToStatic for IriNode<'a> {
     type StaticType = IriNode<'static>;
 

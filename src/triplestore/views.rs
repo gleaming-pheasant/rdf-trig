@@ -48,7 +48,40 @@ impl WriteTriG for IriNodeView<'_> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         write_escaped_local_name(writer, &self.namespace_prefix)?;
         writer.write_all(b":")?;
-        write_escaped_url_component(writer, &self.local_name)?;
+        write_escaped_local_name(writer, &self.local_name)?;
+
+        Ok(())
+    }
+}
+
+/// A temporary view to a [`Graph`](crate::nodes::Graph) which must be 
+/// constructed by resolving data from a `TripleStore`.
+/// 
+/// This is distinct from an [`IriNodeView`]; it implements [`WriteTriG`] by 
+/// wrapping the full URI in `<` `>`, to guarantee formatting on insertion to a 
+/// static triple store.
+#[derive(Debug)]
+pub(crate) struct GraphView<'a> {
+    namespace_url: &'a str,
+    local_name: &'a str
+}
+
+impl<'a> GraphView<'a> {
+    /// Create a new `GraphView` from parts retrieved by querying a 
+    /// `DataStore`.
+    pub fn new(
+        namespace_url: &'a str, local_name: &'a str
+    ) -> GraphView<'a> {
+        GraphView { namespace_url, local_name }
+    }
+}
+
+impl WriteTriG for GraphView<'_> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"<")?;
+        writer.write_all(self.namespace_url.as_bytes())?; // Guaranteed valid.
+        write_escaped_url_component(writer, self.local_name)?;
+        writer.write_all(b">")?;
 
         Ok(())
     }

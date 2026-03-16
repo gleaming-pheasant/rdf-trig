@@ -74,7 +74,8 @@ let bytes = input.as_bytes();
 
             // List of TriG reserved characters to be escaped with a `\`
             b'~' | b'.' | b'!' | b'$' | b'&' | b'\'' | b'(' | b')' | b'*' | 
-            b'+' | b',' | b';' | b'=' | b'/' | b'?' | b'#' | b'@' | b'%' => {
+            b'+' | b',' | b';' | b'=' | b'/' | b'?' | b'#' | b'@' | b'%' | 
+            b':' => {
                 writer.write_all(&[b'\\', b])?;
             }
 

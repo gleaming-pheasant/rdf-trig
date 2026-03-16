@@ -49,6 +49,20 @@ impl<'a> Into<Subject<'a>> for BlankNode<'a> {
     }
 }
 
+impl<'a> Into<Object<'a>> for &'a BlankNode<'a> {
+    #[inline]
+    fn into(self) -> Object<'a> {
+        Object::Blank(self.clone())
+    }
+}
+
+impl<'a> Into<Subject<'a>> for &'a BlankNode<'a> {
+    #[inline]
+    fn into(self) -> Subject<'a> {
+        Subject::Blank(self.clone())
+    }
+}
+
 impl<'a> ToStatic for BlankNode<'a> {
     type StaticType = BlankNode<'static>;
 

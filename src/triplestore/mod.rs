@@ -13,7 +13,7 @@ use crate::triples::{
 };
 use crate::traits::WriteTriG;
 use crate::triplestore::index::GraphIndex;
-use crate::triplestore::views::{IriNodeView, NodeView, TripleView};
+use crate::triplestore::views::{GraphView, IriNodeView, NodeView, TripleView};
 
 /// A `TripleStore` should be the main entry point for applications using this 
 /// crate.
@@ -103,6 +103,20 @@ impl TripleStore {
         }
     }
 
+    /// Retrieve a [`GraphView`] for the given [`NodeId`].
+    /// 
+    /// Panics if called on any `NodeId` which doesn't resolve to an `IriNode`; 
+    /// don't use it on anything but a `Graph`.
+    fn resolve_graph_node<'a>(&'a self, node_id: NodeId) -> GraphView<'a> {
+        match self.nodes.query_node(node_id) {
+            StagingNode::Iri(iri) => {
+                let namespace = self.resolve_namespace(iri.namespace_id());
+                GraphView::new(namespace.iri(), iri.local_name())
+            },
+            _ => unreachable!()
+        }
+    }
+
     /// Retrieve a reference to a [`Namespace`] for the given [`NamespaceId`].
     fn resolve_namespace(
         &self, namespace_id: NamespaceId
@@ -148,7 +162,7 @@ impl WriteTriG for TripleStore {
                 },
                 Some(graph_id) => {
                     // Write the opening for the graph first.
-                    self.resolve_node(*graph_id).write_trig(writer)?;
+                    self.resolve_graph_node(*graph_id).write_trig(writer)?;
                     writer.write_all(b" { ")?; // Padding before first triple.
 
                     // We don't care about writing white space to align with the 
@@ -165,5 +179,131 @@ impl WriteTriG for TripleStore {
         }
         
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, RDFS};
+    use crate::nodes::predicate::{RDF_TYPE};
+    use crate::nodes::{IriNode, LangStringLiteral};
+
+    use super::*;
+
+    #[test]
+    fn test_expected_triple_write_trig() {
+        let mut store = TripleStore::new();
+
+        let triple = Triple::new(
+            IriNode::new(ARIADNEPLUS, "My::Class/123"),
+            IriNode::new(RDFS, String::from("label")),
+            LangStringLiteral::new_en("Is a\tspecial class")
+        );
+
+        store.add_triple(triple);
+
+        let mut buf = vec![];
+
+        store.write_trig(&mut buf).unwrap();
+
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from(
+                "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ariadneplus: <https://ariadne-infrastructure.eu/aocat/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nariadneplus:My\\:\\:Class\\/123 rdfs:label \"Is a\\tspecial class\"@en .\n\n"
+            )
+        );
+    }
+
+    #[test]
+    fn test_expected_triple_and_graph_write_trig() {
+        let mut store = TripleStore::new();
+
+        let my_namespace = Namespace::new(
+            "prefix", "http://www.example.com/"
+        ).unwrap();
+
+        let quad = Triple::new_with_graph(
+            IriNode::new(my_namespace, "SND::Archaeology"),
+            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
+            IriNode::new(RDFS, String::from("label")),
+            LangStringLiteral::new_en("Is a piece of stained glass")
+        );
+
+        store.add_triple(quad);
+
+        let triple = Triple::new(
+            IriNode::new(ARIADNEPLUS, "Natural History Museum"),
+            RDF_TYPE,
+            IriNode::new(AOCAT, "AO_Agent")
+        );
+
+        store.add_triple(triple);
+
+        let mut buf = vec![];
+
+        store.write_trig(&mut buf).unwrap();
+
+        let string_output = String::from_utf8(buf).unwrap();
+
+        // No guarantee of the output order here, hence .contains().
+        assert!(string_output.contains(
+            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+        ));
+        assert!(string_output.contains(
+            "<http://www.example.com/SND::Archaeology> {"
+        ));
+        assert!(string_output.contains(
+            "{ ariadneplus:StainedGlassClass rdfs:label \"Is a piece of stained glass\"@en ."
+        ));
+    }
+
+    #[test]
+    fn test_borrowed_iri_node() {
+        let mut store = TripleStore::new();
+
+        let my_namespace = Namespace::new(
+            "prefix", "http://www.example.com/"
+        ).unwrap();
+
+        let my_reusable_iri = IriNode::new(my_namespace, "ADS::CVMA");
+
+        let quad1 = Triple::new_with_graph(
+            // Uses clone interally, but literally just clones the pointers.
+            &my_reusable_iri,
+            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
+            IriNode::new(RDFS, String::from("label")),
+            LangStringLiteral::new_en("Is a piece of stained glass")
+        );
+
+        store.add_triple(quad1);
+
+        let quad2 = Triple::new_with_graph(
+            &my_reusable_iri,
+            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
+            RDF_TYPE,
+            IriNode::new(AOCAT, "AO_Resource")
+        );
+
+        store.add_triple(quad2);
+
+        let mut buf = vec![];
+
+        store.write_trig(&mut buf).unwrap();
+
+        let string_output = String::from_utf8(buf).unwrap();
+
+        // No guarantee of the output order here, hence .contains().
+        assert!(string_output.contains(
+            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+        ));
+        assert!(string_output.contains(
+            "<http://www.example.com/ADS::CVMA> {"
+        ));
+        assert!(string_output.contains(
+            "ariadneplus:StainedGlassClass rdfs:label \"Is a piece of stained glass\"@en ."
+        ));
+        assert!(string_output.contains(
+            "ariadneplus:StainedGlassClass rdf:type aocat:AO_Resource ."
+        ));
     }
 }
