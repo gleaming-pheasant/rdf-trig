@@ -189,11 +189,8 @@ As all values are interned, any newly encountered `&'a str` references are
 elided to `String`s for permanent storage, but then references can simply be 
 dismissed if a `&'a str` or `String` is encountered.
 
-There is some slight over with this practice; static strings are converted to 
-`String`s whenever they are first interned.
-
 RDF isn't actually "machine understandable", so hardcoding namespaces and iris 
-is very common practice (see the de-facto standard 
+is very common practice (see 
 [RDF4J](https://rdf4j.org/documentation/tutorials/getting-started/)). This crate 
 even provides many `const` namespaces out of the box to assist with this (dcterms, 
 foaf, owl, rdf, rdfs, skos, etc.). If you use any of these, it makes sense to 
