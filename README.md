@@ -4,29 +4,96 @@ A crate for quick formatting of RDF triples in
 
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
 for adding to a `TripleStore`. It also provides traits for writing the 
-`TripleStore` and individual elements to TriG.
+`TripleStore` and individual elements to TriG on any `impl std::io::Write`.
 
 The main impetus of this crate is speed. It uses types and methods explicitly 
-for reading and writing types with as little reallocation, copying and memory 
-peaking as possible.
+for reading and writing types with as little reallocation or copying as 
+possible.
 
-Please see the crate documentation in `./src/lib.rs` for usage examples.
+## Usage Examples
+### Add Multiple Triples to a Graph
+```rust
+use rdf_trig::{
+    IriNode, LangStringLiteral, Namespace, TripleStore, Triple, WriteTriG
+};
+use rdf_trig::namespaces::statics::OWL;
+use rdf_trig::nodes::predicate::RDF_TYPE;
 
-## This is Not a True RDF Implementation
-### Incomplete Escape Sequences
+let mut store = TripleStore::new();
+
+let my_schema = Namespace::new("schema", "http://www.example.com/ontology#")
+    .unwrap();
+
+let my_objects = Namespace::new("nodes", "http://www.example.com/")
+    .unwrap();
+
+let graph = IriNode::new(&my_objects, "MyGraph");
+
+// Using a reference to graph uses Clone internally, but as all str values are 
+// Cows, and no allocation is done except on first insertion of a value into the 
+// TripleStore, this overhead is virtually free.
+let type_triple = Triple::new_with_graph(
+    &graph,
+    IriNode::new(&my_objects, "Object123"),
+    RDF_TYPE,
+    IriNode::new(OWL, "Thing")
+);
+
+store.add_triple(type_triple);
+
+let label_triple = Triple::new_with_graph(
+    &graph,
+    IriNode::new(&my_objects, "Object123"),
+    IriNode::new(my_schema, "hasCustomLabel"),
+    LangStringLiteral::new("is a Thing", "en").unwrap()
+);
+
+store.add_triple(label_triple);
+
+let mut buf = vec![];
+
+store.write_trig(&mut buf).unwrap();
+
+let string_output = String::from_utf8(buf).unwrap();
+
+// There is no guarantee of the output order here, hence .contains() rather than 
+// assert_eq!().
+assert!(string_output.contains(
+    "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+));
+assert!(string_output.contains(
+    "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+));
+assert!(string_output.contains(
+    "@prefix schema: <http://www.example.com/ontology#> .\n"
+));
+assert!(string_output.contains(
+    "<http://www.example.com/MyGraph> {"
+));
+assert!(string_output.contains(
+    "nodes:Object123 rdf:type owl:Thing ."
+));
+assert!(string_output.contains(
+    "nodes:Object123 schema:hasCustomLabel \"is a Thing\"@en ."
+));
+
+```
+
+## A Note on Accepted Values
+### *All Escaped Values*
 For the purposes of speed (and given this crate's limited functionality), no 
-types are rejected on input (except language ISO 639-1 codes). For example, a 
-local name (generally the prefix for a namespace) can be passed to this crate 
-with non-printables, whitespace, or other characters which need escaping.
+types are rejected on input. A local name can be passed to this crate with 
+whitespace, or characters in need of escaping, etc.
 
 Rather than rejecting these inputs and creating a bottleneck, the crate simply 
-escapes - and in some cases refuses to write - characters on creating the TriG 
-output. E.g. a local name (such as a prefix) declared with a line break, will be 
-accepted, but the line break will simply be removed on the output.
+escapes - and in some cases refuses to write - characters in the TriG output. 
+For instance, a local name (such as a prefix) declared with a line break (\r\n 
+or \n), will be accepted, but the line break will simply be removed on the 
+output.
 
-__The escape sequences are not completely valid!__ The crate doesn't exclude 
-some of the characters that the TriG specification excludes, such as this 
-questionable exclusion of the multiplication sign:
+__But, the escape sequences are also not completely valid!__ The crate doesn't 
+exclude some of the random characters that the TriG specification excludes, 
+such as this exclusion of the multiplication sign:
 
  > [#0370-#037D] | [#037F-#1FFF]
 
@@ -34,16 +101,39 @@ Instead, the crate hopes to not encounter them, trusts that users will exclude
 them manually, or that users' graph databases will tolerate the invalid 
 characters.
 
-Again, this is to improve speed; parsing single bytes based on their ASCII 
-status rather than looping through several groups of intermittent characters.
+Again, this is to improve speed; parsing bytes based on their base2 value, 
+rather than verifying individual characters.
 
-### Invalid gYears
+### *IRIs*
+This crate - as with most implementations of RDF - has an awkward relationship 
+with IRIs.
+
+To a certain degree, it has to trust that param separators, path separators, 
+etc. are where they should. Using an example from the 
+[TriG specification](https://www.w3.org/TR/trig/#sec-escapes) to explain:
+
+> %-encoded sequences are in the character range for IRIs and are explicitly 
+> allowed in local names. These appear as a '%' followed by two hex characters 
+> and represent that same sequence of three characters. These sequences are not 
+> decoded during processing. A term written as <http://a.example/%66oo-bar> in 
+> TriG designates the IRI http://a.example/%66oo-bar and not IRI 
+> http://a.example/foo-bar. A term written as ex:%66oo-bar with a prefix @prefix 
+> ex: <http://a.example/> also designates the IRI http://a.example/%66oo-bar.
+
+Therefore, the only verification that this crate does is on namespace IRIs 
+(the base IRI, and not any local_names). Once those are verified, any appended 
+local_names are simply trusted to be in a valid format. This crate makes no 
+assumptions about what needs escaping, and instead only escapes characters 
+that would otherwise make an local_name completely invalid (such as spaces, 
+'<', '{', '|', etc.).
+
+### *gYears*
 To align with common practices - but, ironically, not the XML Schema - this 
-crate does not output valid `xsd:gYear`s. As with most modern software,
-including GraphDB which accepts gYears in this format, a year is taken as 
+crate does not output valid `xsd:gYear`s. As with most modern software - 
+including GraphDB which accepts gYears in this format - a year is taken as 
 entered. The [XML Schema](https://www.w3.org/TR/xmlschema11-2/#gYear) specifies 
 that a year shorter than 4 digits is pre-padded with zeroes (e.g. the year 
-"*69*" should become "*0069*"). The less said about this the better.
+"*123*" should become "*0123*"). The less said about this the better.
 
 This crate also doesn't allow storage of timezone offsets with gYears. Again, 
 purely for speed and practicality.

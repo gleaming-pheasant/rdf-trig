@@ -18,10 +18,12 @@ pub struct IriNode<'a> {
 
 impl<'a> IriNode<'a> {
     /// Create a new `IriNode`.
-    pub fn new<C: Into<Cow<'a, str>>>(
-        namespace: Namespace<'a>, local_name: C
-    ) -> IriNode<'a> {
-        IriNode { namespace, local_name: local_name.into() }
+    pub fn new<N, L>(namespace: N, local_name: L) -> IriNode<'a>
+    where
+        N: Into<Namespace<'a>>,
+        L: Into<Cow<'a, str>>
+    {
+        IriNode { namespace: namespace.into(), local_name: local_name.into() }
     }
 
     /// Allows you to create a new `IriNode` which is composed of static values 
