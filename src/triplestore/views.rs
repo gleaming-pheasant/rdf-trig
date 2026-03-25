@@ -4,7 +4,7 @@ use std::io::{self, Write};
 
 use crate::traits::WriteTriG;
 use crate::nodes::{BlankNode, LiteralNode};
-use crate::utils::{write_escaped_local_name, write_escaped_url_component};
+use crate::utils::write_escaped_url_component;
 
 /// A temporary view to one of [`BlankNode`], [`IriNodeView`] or [`LiteralNode`], 
 /// which must be constructed by resolving data from a `TripleStore`.
@@ -30,7 +30,7 @@ impl<'a> WriteTriG for NodeView<'a> {
 /// `prefix` from its interned [`Namespace`](crate::namespaces::Namespace).
 #[derive(Debug)]
 pub(crate) struct IriNodeView<'a> {
-    namespace_prefix: &'a str,
+    namespace_iri: &'a str,
     local_name: &'a str
 }
 
@@ -38,17 +38,18 @@ impl<'a> IriNodeView<'a> {
     /// Create a new `IriNodeView` from parts retrieved by querying a 
     /// `DataStore`.
     pub fn new(
-        namespace_prefix: &'a str, local_name: &'a str
+        namespace_iri: &'a str, local_name: &'a str
     ) -> IriNodeView<'a> {
-        IriNodeView { namespace_prefix, local_name }
+        IriNodeView { namespace_iri, local_name }
     }
 }
 
 impl WriteTriG for IriNodeView<'_> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        write_escaped_local_name(writer, &self.namespace_prefix)?;
-        writer.write_all(b":")?;
-        write_escaped_local_name(writer, &self.local_name)?;
+        writer.write_all(b"<")?;
+        write_escaped_url_component(writer, &self.namespace_iri)?;
+        write_escaped_url_component(writer, &self.local_name)?;
+        writer.write_all(b">")?;
 
         Ok(())
     }

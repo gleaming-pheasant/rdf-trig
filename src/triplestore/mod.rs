@@ -97,7 +97,7 @@ impl TripleStore {
             StagingNode::Blank(blank) => NodeView::Blank(blank),
             StagingNode::Iri(iri) => {
                 let namespace = self.resolve_namespace(iri.namespace_id());
-                NodeView::Iri(IriNodeView::new(namespace.prefix(), iri.local_name()))
+                NodeView::Iri(IriNodeView::new(namespace.iri(), iri.local_name()))
             },
             StagingNode::Literal(literal) => NodeView::Literal(literal)
         }
