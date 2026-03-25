@@ -143,7 +143,6 @@ impl WriteTriG for TripleView<'_> {
         self.predicate.write_trig(writer)?;
         writer.write_all(b" ")?;
         self.object.write_trig(writer)?;
-        writer.write_all(b" .\n")?;
 
         Ok(())
     }
