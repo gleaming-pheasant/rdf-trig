@@ -97,7 +97,7 @@ impl TripleStore {
             StagingNode::Blank(blank) => NodeView::Blank(blank),
             StagingNode::Iri(iri) => {
                 let namespace = self.resolve_namespace(iri.namespace_id());
-                NodeView::Iri(IriNodeView::new(namespace.prefix(), iri.local_name()))
+                NodeView::Iri(IriNodeView::new(&namespace, iri.local_name()))
             },
             StagingNode::Literal(literal) => NodeView::Literal(literal)
         }
@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(
             String::from_utf8(buf).unwrap(),
             String::from(
-                "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ariadneplus: <https://ariadne-infrastructure.eu/aocat/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\nariadneplus:My\\:\\:Class\\/123 rdfs:label \"Is a\\tspecial class\"@en .\n\n"
+                "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ariadneplus: <https://ariadne-infrastructure.eu/aocat/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n<https://ariadne-infrastructure.eu/aocat/My::Class/123> rdfs:label \"Is a\\tspecial class\"@en .\n\n"
             )
         );
     }
@@ -303,7 +303,7 @@ mod tests {
             "ariadneplus:StainedGlassClass rdfs:label \"Is a piece of stained glass\"@en ."
         ));
         assert!(string_output.contains(
-            "ariadneplus:StainedGlassClass rdf:type aocat:AO_Resource ."
+            "ariadneplus:StainedGlassClass a aocat:AO_Resource ."
         ));
     }
 }
