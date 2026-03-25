@@ -2,9 +2,11 @@
 //! [`TripleStore`](crate::triplestore::TripleStore) and its component parts.
 use std::io::{self, Write};
 
+use crate::Namespace;
+use crate::namespaces::statics::RDF;
 use crate::traits::WriteTriG;
 use crate::nodes::{BlankNode, LiteralNode};
-use crate::utils::write_escaped_url_component;
+use crate::utils::{write_escaped_local_name, write_escaped_url_component};
 
 /// A temporary view to one of [`BlankNode`], [`IriNodeView`] or [`LiteralNode`], 
 /// which must be constructed by resolving data from a `TripleStore`.
@@ -30,7 +32,7 @@ impl<'a> WriteTriG for NodeView<'a> {
 /// `prefix` from its interned [`Namespace`](crate::namespaces::Namespace).
 #[derive(Debug)]
 pub(crate) struct IriNodeView<'a> {
-    namespace_iri: &'a str,
+    namespace: &'a Namespace<'a>,
     local_name: &'a str
 }
 
@@ -38,17 +40,30 @@ impl<'a> IriNodeView<'a> {
     /// Create a new `IriNodeView` from parts retrieved by querying a 
     /// `DataStore`.
     pub fn new(
-        namespace_iri: &'a str, local_name: &'a str
+        namespace: &'a Namespace<'a>, local_name: &'a str
     ) -> IriNodeView<'a> {
-        IriNodeView { namespace_iri, local_name }
+        IriNodeView { namespace, local_name }
     }
 }
 
 impl WriteTriG for IriNodeView<'_> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        if *self.namespace == RDF && self.local_name == "type" {
+            return writer.write_all(b"a")
+        }
+
+        // Can be printed as a local_name
+        if self.local_name.bytes() // Check they're printable as a local_name.
+        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-') {
+            write_escaped_local_name(writer, self.namespace.prefix())?;
+            writer.write_all(b":")?;
+            return write_escaped_local_name(writer, self.local_name)
+        }
+
+        // Otherwise, output as full IRI
         writer.write_all(b"<")?;
-        write_escaped_url_component(writer, &self.namespace_iri)?;
-        write_escaped_url_component(writer, &self.local_name)?;
+        writer.write_all(self.namespace.iri().as_bytes())?; // Guaranteed valid.
+        write_escaped_url_component(writer, self.local_name)?;
         writer.write_all(b">")?;
 
         Ok(())
@@ -63,7 +78,7 @@ impl WriteTriG for IriNodeView<'_> {
 /// static triple store.
 #[derive(Debug)]
 pub(crate) struct GraphView<'a> {
-    namespace_url: &'a str,
+    namespace_iri: &'a str,
     local_name: &'a str
 }
 
@@ -71,16 +86,16 @@ impl<'a> GraphView<'a> {
     /// Create a new `GraphView` from parts retrieved by querying a 
     /// `DataStore`.
     pub fn new(
-        namespace_url: &'a str, local_name: &'a str
+        namespace_iri: &'a str, local_name: &'a str
     ) -> GraphView<'a> {
-        GraphView { namespace_url, local_name }
+        GraphView { namespace_iri, local_name }
     }
 }
 
 impl WriteTriG for GraphView<'_> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"<")?;
-        writer.write_all(self.namespace_url.as_bytes())?; // Guaranteed valid.
+        writer.write_all(self.namespace_iri.as_bytes())?;
         write_escaped_url_component(writer, self.local_name)?;
         writer.write_all(b">")?;
 

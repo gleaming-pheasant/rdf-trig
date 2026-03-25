@@ -71,7 +71,7 @@ assert!(string_output.contains(
     "<http://www.example.com/MyGraph> {"
 ));
 assert!(string_output.contains(
-    "nodes:Object123 rdf:type owl:Thing ."
+    "nodes:Object123 a owl:Thing ."
 ));
 assert!(string_output.contains(
     "nodes:Object123 schema:hasCustomLabel \"is a Thing\"@en ."
