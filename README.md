@@ -121,11 +121,11 @@ etc. are where they should. Using an example from the
 > ex: <http://a.example/> also designates the IRI http://a.example/%66oo-bar.
 
 Therefore, the only verification that this crate does is on namespace IRIs 
-(the base IRI, and not any local_names). Once those are verified, any appended 
-local_names are simply trusted to be in a valid format. This crate makes no 
-assumptions about what needs escaping, and instead only escapes characters 
-that would otherwise make an local_name completely invalid (such as spaces, 
-'<', '{', '|', etc.).
+(the base IRI, and not any local names). Once those are verified, any appended 
+local_names are simply trusted to be in a valid format. This crate only assumes 
+that if a local name as a [PLX](https://www.w3.org/TR/trig/#grammar-production-PLX) 
+would need any characters escaping, the full escaped URL should be output (e.g. 
+`<https://www.example.com/Not%20Valid%20PLX>`).
 
 ### *gYears*
 To align with common practices - but, ironically, not the XML Schema - this 
