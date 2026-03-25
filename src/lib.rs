@@ -8,7 +8,6 @@ in a `TripleStore` field.
 Exercise extreme caution if ever developing means that could make these `...Id`s 
 constructable by any other method. */
 pub mod errors;
-pub mod namespaces;
 pub mod nodes;
 pub(crate) mod traits;
 mod triples;
@@ -16,13 +15,12 @@ mod triplestore;
 pub(crate) mod utils;
 
 pub use triplestore::TripleStore;
-pub use namespaces::Namespace;
 pub use nodes::{
     BlankNode, BooleanLiteral, DateTimeLiteral, DecimalLiteral, GYearLiteral, 
     IriNode, LangStringLiteral, LiteralNode
 };
 pub use triples::Triple;
-pub use traits::WriteTriG;
+pub use traits::WriteNQuads;
 
 use std::hash::BuildHasherDefault;
 use ahash::AHasher;

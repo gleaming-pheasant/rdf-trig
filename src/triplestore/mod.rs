@@ -4,14 +4,11 @@ mod views;
 use std::collections::hash_map::Iter;
 use std::io::{Result as IoResult, Write};
 
-use crate::namespaces::Namespace;
-use crate::namespaces::statics::XSD;
-use crate::namespaces::store::{NamespaceId, NamespaceStore};
 use crate::nodes::{NodeId, NodeStore, StagingNode};
 use crate::triples::{
     InternedTriple, InternedTripleId, InternedTripleStore, Triple
 };
-use crate::traits::WriteTriG;
+use crate::traits::WriteNQuads;
 use crate::triplestore::index::GraphIndex;
 use crate::triplestore::views::{GraphView, IriNodeView, NodeView, TripleView};
 
@@ -23,7 +20,6 @@ use crate::triplestore::views::{GraphView, IriNodeView, NodeView, TripleView};
 /// `Quad`) and [`Triple`]s.
 #[derive(Debug)]
 pub struct TripleStore {
-    namespaces: NamespaceStore,
     nodes: NodeStore,
     triples: InternedTripleStore,
     graph_index: GraphIndex
@@ -35,11 +31,7 @@ impl TripleStore {
     // Initialises the triplestore with the [`XSD`] namespace already 
     // registered, due to its necessity for using any literal types.
     pub fn new() -> TripleStore {
-        let mut namespaces = NamespaceStore::new();
-        namespaces.intern_namespace(XSD);
-
         TripleStore {
-            namespaces,
             nodes: NodeStore::new(),
             triples: InternedTripleStore::new(),
             graph_index: GraphIndex::new()

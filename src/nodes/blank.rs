@@ -10,10 +10,9 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::nodes::StagingNode;
 use crate::nodes::subject::Subject;
 use crate::nodes::object::Object;
-use crate::traits::{ToStatic, WriteTriG};
+use crate::traits::{ToStatic, WriteNQuads};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 
@@ -72,22 +71,11 @@ impl<'a> ToStatic for BlankNode<'a> {
     }
 }
 
-// #[derive(Debug, Eq, Hash, PartialEq)]
-// pub(crate) struct InternedBlankNode(pub BlankNode<'static>);
-
-impl<'a> Into<StagingNode<'a>> for BlankNode<'a> {
-    /// Wrap this `BlankNode` as a `StagedNode` in preparation for interning.
-    #[inline]
-    fn into(self) -> StagingNode<'a> {
-        StagingNode::Blank(self)
-    }
-}
-
-impl WriteTriG for BlankNode<'_> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"_:")?;
+impl WriteNQuads for BlankNode<'_> {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+       writer.write_all(b"_:")?;
         write_escaped_local_name(writer, &self.0)?;
 
-        Ok(())
+        Ok(()) 
     }
 }

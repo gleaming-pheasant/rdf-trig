@@ -6,6 +6,8 @@ use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
 
+const XSD_BOOLEAN: &'static str = "http://www.w3.org/2001/XMLSchema#boolean";
+
 /// A wrapper around a [`bool`], which can be constructed either with a 
 /// native `bool`, or with a string equal to "1"/"0" or "true"/"false".
 /// 

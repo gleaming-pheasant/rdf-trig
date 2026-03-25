@@ -9,8 +9,8 @@
 //! of the node (storing it in a `TripleStore`).
 mod blank;
 mod graph;
-mod iri;
 mod literals;
+mod named;
 mod object;
 pub mod predicate; // Public to allow access to const `Predicate`s.
 mod subject;
@@ -18,8 +18,7 @@ mod store;
 
 pub use blank::BlankNode;
 pub use graph::Graph;
-pub use iri::IriNode;
-pub(crate) use iri::StagingIriNode;
+pub use named::NamedNode;
 pub use literals::{
     BooleanLiteral,
     DecimalLiteral,
@@ -33,38 +32,10 @@ pub use predicate::Predicate;
 pub use subject::Subject;
 pub(crate) use store::{NodeId, NodeStore};
 
-use crate::traits::ToStatic;
-
-/// Serves as a wrapper around the same types as [`Node`], with the exception 
-/// that the Iri variant is a [`StagedIriNode`], that is one which has already 
-/// retrieved the [`NamespaceId`] for its interned [`Namespace`].
-#[derive(Debug, Eq, Hash, PartialEq)]
-pub(crate) enum StagingNode<'a> {
-    Blank(BlankNode<'a>),
-    Iri(StagingIriNode<'a>),
-    Literal(LiteralNode<'a>)
-}
-
-impl<'a> ToStatic for StagingNode<'a> {
-    type StaticType = StagingNode<'static>;
-
-    fn to_static(&self) -> Self::StaticType {
-        match self {
-            StagingNode::Blank(blank) => {
-                StagingNode::Blank(blank.to_static())
-            },
-            StagingNode::Iri(iri) => StagingNode::Iri(iri.to_static()),
-            StagingNode::Literal(literal) => {
-                StagingNode::Literal(literal.to_static())
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::traits::WriteTriG;
+    use crate::traits::WriteNQuads;
 
     #[test]
     fn test_bool_true_str() {

@@ -3,14 +3,13 @@
 //! 
 //! Use the `const` function [`Namespace::new_const`] to create `const` 
 //! `Namespace`s for use in your own applications.
-use crate::nodes::Predicate;
+pub mod classes;
+pub mod properties;
 
-use super::Namespace;
+use crate::nodes::{NamedNode, Predicate};
 
 /// The [AO-Cat](https://doi.org/10.5281/zenodo.7818375) ontology.
-pub const AOCAT: Namespace = Namespace::new_const(
-    "aocat", "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/"
-);
+pub const AOCAT: NamedNode<'static> = NamedNode::new_const("https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/");
 
 /// A namespace for graphs forming part of the 
 /// [ARIADNE portal](https://portal.ariadne-infrastructure.eu/).
