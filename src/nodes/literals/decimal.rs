@@ -3,10 +3,12 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 
-use crate::WriteTriG;
+use crate::WriteNQuads;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
+
+const XSD_DECIMAL: &[u8; 42] = b"<http://www.w3.org/2001/XMLSchema#decimal>";
 
 /// A wrapper around an [`f32`], which can be constructed either with a 
 /// native `f32`, or with a string which can be parsed as one.
@@ -69,12 +71,15 @@ impl<'a> Into<Object<'a>> for DecimalLiteral {
     }
 }
 
-impl WriteTriG for DecimalLiteral {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+impl WriteNQuads for DecimalLiteral {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"\"")?;
         writer.write_all(self.0.to_string().as_bytes())?;
         if self.0.fract() == 0.0 {
             writer.write_all(b".")?;
         }
+        writer.write_all(b"\"^^")?;
+        writer.write_all(XSD_DECIMAL)?;
         Ok(())
     }
 }

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteTriG;
+use crate::WriteNQuads;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
 use crate::errors::RdfTrigError;
@@ -80,8 +80,8 @@ impl<'a> ToStatic for LangStringLiteral<'a> {
     }
 }
 
-impl<'a> WriteTriG for LangStringLiteral<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+impl<'a> WriteNQuads for LangStringLiteral<'a> {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         write_escaped_literal(writer, &self.value)?;
         writer.write_all(b"\"@")?;

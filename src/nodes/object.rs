@@ -18,6 +18,12 @@ pub enum Object<'a> {
     Literal(LiteralNode<'a>)
 }
 
+impl<'a> Object<'a> {
+    pub(crate) fn new_const_named(iri: &'static str) -> Object<'static> {
+        Object::Named(NamedNode::new_const(iri))
+    }
+}
+
 impl<'a> From<&Object<'a>> for Object<'a> {
     fn from(o: &Object<'a>) -> Self {
         o.clone()

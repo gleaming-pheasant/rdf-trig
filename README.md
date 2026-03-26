@@ -10,6 +10,9 @@ The main impetus of this crate is speed. It uses types and methods explicitly
 for reading and writing types with as little reallocation or copying as 
 possible.
 
+__Warning__ This crate is pre-stable release. All releases (regardless of minor 
+or major), will probably have breaking changes.
+
 ## Usage Examples
 ### Add Multiple Triples to a Graph
 ```rust

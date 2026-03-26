@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteTriG;
+use crate::WriteNQuads;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
+
+const XSD_GYEAR: &[u8; 40] = b"<http://www.w3.org/2001/XMLSchema#gYear>";
 
 /// A wrapper around an [`i32`], which can be constructed either with a 
 /// native `i32`, or with a string which can be parsed as one.
@@ -53,11 +55,12 @@ impl<'a> Into<Object<'a>> for GYearLiteral {
     }
 }
 
-impl WriteTriG for GYearLiteral {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+impl WriteNQuads for GYearLiteral {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         writer.write_all(self.0.to_string().as_bytes())?;
-        writer.write_all(b"\"^^xsd:gYear")?;
+        writer.write_all(b"\"^^")?;
+        writer.write_all(XSD_GYEAR)?;
 
         Ok(())
     }

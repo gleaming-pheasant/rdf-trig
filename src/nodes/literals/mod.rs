@@ -13,9 +13,8 @@ pub use string::LangStringLiteral;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteTriG;
+use crate::WriteNQuads;
 use crate::nodes::object::Object;
-use crate::nodes::StagingNode;
 use crate::traits::ToStatic;
 use crate::utils::write_escaped_literal;
 
@@ -71,14 +70,6 @@ impl<'a> Into<Object<'a>> for &'a LiteralNode<'a> {
     }
 }
 
-impl<'a> Into<StagingNode<'a>> for LiteralNode<'a> {
-    /// Wrap this `LiteralNode` as a `StagedNode` in preparation for interning.
-    #[inline]
-    fn into(self) -> StagingNode<'a> {
-        StagingNode::Literal(self)
-    }
-}
-
 impl<'a> ToStatic for LiteralNode<'a> {
     type StaticType = LiteralNode<'static>;
 
@@ -96,14 +87,14 @@ impl<'a> ToStatic for LiteralNode<'a> {
     }
 }
 
-impl<'a> WriteTriG for LiteralNode<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+impl<'a> WriteNQuads for LiteralNode<'a> {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
-            LiteralNode::Boolean(bool) => bool.write_trig(writer),
-            LiteralNode::DateTime(dt) => dt.write_trig(writer),
-            LiteralNode::Decimal(dec) => dec.write_trig(writer),
-            LiteralNode::GYear(gy) => gy.write_trig(writer),
-            LiteralNode::LangString(ls) => ls.write_trig(writer),
+            LiteralNode::Boolean(bool) => bool.write_nquads(writer),
+            LiteralNode::DateTime(dt) => dt.write_nquads(writer),
+            LiteralNode::Decimal(dec) => dec.write_nquads(writer),
+            LiteralNode::GYear(gy) => gy.write_nquads(writer),
+            LiteralNode::LangString(ls) => ls.write_nquads(writer),
             LiteralNode::String(s) => {
                 writer.write_all(b"\"")?;
                 write_escaped_literal(writer, &s)?;

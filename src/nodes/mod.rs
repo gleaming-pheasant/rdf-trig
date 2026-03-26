@@ -32,6 +32,15 @@ pub use predicate::Predicate;
 pub use subject::Subject;
 pub(crate) use store::{NodeId, NodeStore};
 
+
+// Must be an enum not a trait, in order to implement Hash via macro.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum Node<'a> {
+    Blank(BlankNode<'a>),
+    Literal(LiteralNode<'a>),
+    Named(NamedNode<'a>)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

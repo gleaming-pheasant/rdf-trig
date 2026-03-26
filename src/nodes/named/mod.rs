@@ -1,7 +1,4 @@
-mod statics;
-
-pub use statics::classes;
-pub use statics::properties;
+pub mod statics;
 
 use std::borrow::Cow;
 

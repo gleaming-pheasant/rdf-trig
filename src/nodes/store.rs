@@ -1,7 +1,6 @@
 use std::ops::Deref;
 
 use crate::FastIndexSet;
-use crate::nodes::StagingNode;
 use crate::traits::ToStatic;
 
 /// A `NodeId` is a wrapper around a `u32` and is only retrievable by converting 
@@ -32,9 +31,9 @@ impl Deref for NodeId {
     }
 }
 
-/// A wrapper around a [`FastIndexSet<StagingNode>`] which serves to store 
+/// A wrapper around a [`FastIndexSet<Node>`] which serves to store 
 /// unique "nodes" and hand out [`NodeId`]s as references to the 
-/// interned [`StagingNode`]s.
+/// interned [`Node`]s.
 #[derive(Debug)]
 pub(crate) struct NodeStore(FastIndexSet<StagingNode<'static>>);
 

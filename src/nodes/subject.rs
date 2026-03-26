@@ -16,6 +16,12 @@ pub enum Subject<'a> {
     Named(NamedNode<'a>)
 }
 
+impl<'a> Subject<'a> {
+    pub(crate) fn new_const_named(iri: &'static str) -> Subject<'static> {
+        Subject::Named(NamedNode::new_const(iri))
+    }
+}
+
 impl<'a> From<&Subject<'a>> for Subject<'a> {
     fn from(s: &Subject<'a>) -> Self {
         s.clone()
