@@ -1,6 +1,6 @@
 //! `nodes` is composed of the user-facing nodes [`Subject`], [`Object`] and 
 //! [`Predicate`], which are required for constructing triples, but must be 
-//! created from the individual types of node; [`BlankNode`], [`IriNode`] and 
+//! created from the individual types of node; [`BlankNode`], [`NamedNode`] and 
 //! [`LiteralNode`] (including all of its component options).
 //! 
 //! Each node type contains either native types of known size or `Cow<'a, str>` 
@@ -10,7 +10,7 @@
 mod blank;
 mod graph;
 mod literals;
-mod named;
+pub mod named;
 mod object;
 pub mod predicate; // Public to allow access to const `Predicate`s.
 mod subject;
@@ -32,13 +32,40 @@ pub use predicate::Predicate;
 pub use subject::Subject;
 pub(crate) use store::{NodeId, NodeStore};
 
+use std::io::{self, Write};
 
-// Must be an enum not a trait, in order to implement Hash via macro.
+use crate::traits::{ToStatic, WriteNQuads};
+
+
+// Must be an enum not a trait, in order to implement `Hash` via macro.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Node<'a> {
     Blank(BlankNode<'a>),
     Literal(LiteralNode<'a>),
     Named(NamedNode<'a>)
+}
+
+impl<'a> ToStatic for Node<'a> {
+    type StaticType = Node<'static>;
+
+    fn to_static(&self) -> Self::StaticType {
+        match self {
+            Node::Blank(b) => Node::Blank(b.to_static()),
+            Node::Literal(l) => Node::Literal(l.to_static()),
+            Node::Named(n) => Node::Named(n.to_static())
+        }
+    }
+}
+
+impl WriteNQuads for Node<'_> {
+    #[inline]
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            Node::Blank(b) => b.write_nquads(writer),
+            Node::Literal(l) => l.write_nquads(writer),
+            Node::Named(n) => n.write_nquads(writer)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -80,13 +107,16 @@ mod tests {
     }
 
     #[test]
-    fn test_bool_write_trig() {
+    fn test_bool_write_nquads() {
         let bool_literal = BooleanLiteral::from(true);
         
         let mut buf = vec![];
-        bool_literal.write_trig(&mut buf).unwrap();
+        bool_literal.write_nquads(&mut buf).unwrap();
 
-        assert_eq!(String::from_utf8(buf).unwrap(), String::from("true"));
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>")
+        );
     }
 
     #[test]
@@ -114,16 +144,16 @@ mod tests {
     }
 
     #[test]
-    fn test_datetime_str_write_trig() {
+    fn test_datetime_str_write_nquads() {
         let dt_str = "2020-01-01T12:00:00.000-11:00";
         let dt_literal = DateTimeLiteral::try_from_str(dt_str).unwrap();
 
         let mut buf = vec![];
-        dt_literal.write_trig(&mut buf).unwrap();
+        dt_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
-            format!("\"{}\"^^xsd:dateTime", dt_str)
+            format!("\"{}\"^^<http://www.w3.org/2001/XMLSchema#dateTime>", dt_str)
         );
     }
 
@@ -139,7 +169,7 @@ mod tests {
 
     #[cfg(feature = "chrono")]
     #[test]
-    fn test_datetime_chrono_offset_write_trig() {
+    fn test_datetime_chrono_offset_write_nquads() {
         use chrono::TimeZone;
 
         // 5 Hours
@@ -148,11 +178,11 @@ mod tests {
         let offset_node = DateTimeLiteral::try_from(offset).unwrap();
 
         let mut offset_buf = vec![];
-        offset_node.write_trig(&mut offset_buf).unwrap();
+        offset_node.write_nquads(&mut offset_buf).unwrap();
         let offset_string = String::from_utf8(offset_buf).unwrap();
         assert_eq!(
             offset_string,
-            String::from("\"2026-03-02T09:00:00+05:00\"^^xsd:dateTime")
+            String::from("\"2026-03-02T09:00:00+05:00\"^^<http://www.w3.org/2001/XMLSchema#dateTime>")
         );
     }
 
@@ -167,18 +197,18 @@ mod tests {
 
     #[cfg(feature = "time")]
     #[test]
-    fn test_datetime_time_offset_write_trig() {
+    fn test_datetime_time_offset_write_nquads() {
         use time::macros::datetime;
 
         let offset = datetime!(2020-03-01 09:30:25.000 -3);
         let dt_literal = DateTimeLiteral::try_from(offset).unwrap();
 
         let mut buf = vec![];
-        dt_literal.write_trig(&mut buf);
+        dt_literal.write_nquads(&mut buf);
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
-            String::from("\"2020-03-01T09:30:25-03:00\"^^xsd:dateTime")
+            String::from("\"2020-03-01T09:30:25-03:00\"^^<http://www.w3.org/2001/XMLSchema#dateTime>")
         )
     }
 
@@ -193,18 +223,18 @@ mod tests {
 
     #[cfg(feature = "time")]
     #[test]
-    fn test_datetime_time_primitive_write_trig() {
+    fn test_datetime_time_primitive_write_nquads() {
         use time::macros::datetime;
 
         let primitive = datetime!(2026-01-01 09:59:59.000);
         let dt_literal = DateTimeLiteral::try_from(primitive).unwrap();
 
         let mut buf = vec![];
-        dt_literal.write_trig(&mut buf);
+        dt_literal.write_nquads(&mut buf);
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
-            String::from("\"2026-01-01T09:59:59\"^^xsd:dateTime")
+            String::from("\"2026-01-01T09:59:59\"^^<http://www.w3.org/2001/XMLSchema#dateTime>")
         )
     }
 
@@ -219,24 +249,29 @@ mod tests {
     }
 
     #[test]
-    fn test_decimal_from_str_write_trig() {
+    fn test_decimal_from_str_write_nquads() {
         let decimal_literal = DecimalLiteral::try_from_str("69").unwrap();
 
         let mut buf = vec![];
-        decimal_literal.write_trig(&mut buf).unwrap();
+        decimal_literal.write_nquads(&mut buf).unwrap();
         assert_eq!(
-            String::from_utf8(buf).unwrap(), String::from("69.") // Trailing "."
+            String::from_utf8(buf).unwrap(),
+            // Test for trailing period (.).
+            String::from("\"69.\"^^<http://www.w3.org/2001/XMLSchema#decimal>")
         );
     }
 
     #[test]
-    fn test_decimal_from_native_write_trig() {
+    fn test_decimal_from_native_write_nquads() {
         let decimal_literal = DecimalLiteral::from(69.420f32);
 
         let mut buf = vec![];
-        decimal_literal.write_trig(&mut buf).unwrap();
+        decimal_literal.write_nquads(&mut buf).unwrap();
 
-        assert_eq!(String::from_utf8(buf).unwrap(), String::from("69.42"));
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            String::from("\"69.42\"^^<http://www.w3.org/2001/XMLSchema#decimal>")
+        );
     }
 
     #[test]
@@ -250,16 +285,16 @@ mod tests {
     }
 
     #[test]
-    fn test_gyear_from_native_write_trig() {
+    fn test_gyear_from_native_write_nquads() {
         let year = -420;
         let gyear_literal = GYearLiteral::from(year);
 
         let mut buf = vec![];
-        gyear_literal.write_trig(&mut buf).unwrap();
+        gyear_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
-            format!("\"{}\"^^xsd:gYear", year)
+            format!("\"{}\"^^<http://www.w3.org/2001/XMLSchema#gYear>", year)
         );
     }
 
@@ -274,13 +309,13 @@ mod tests {
     }
 
     #[test]
-    fn test_lang_string_valid_lang_write_trig() {
+    fn test_lang_string_valid_lang_write_nquads() {
         let value = "My String";
         let langstring_literal = LangStringLiteral::new(value, "gr")
             .unwrap();
 
         let mut buf = vec![];
-        langstring_literal.write_trig(&mut buf).unwrap();
+        langstring_literal.write_nquads(&mut buf).unwrap();
         assert_eq!(
             String::from_utf8(buf).unwrap(),
             format!("\"{}\"@gr", value)
@@ -288,12 +323,12 @@ mod tests {
     }
 
     #[test]
-    fn test_lang_string_en_write_trig() {
+    fn test_lang_string_en_write_nquads() {
         let value = "My String";
         let lang_string_literal = LangStringLiteral::new_en(value);
 
         let mut buf = vec![];
-        lang_string_literal.write_trig(&mut buf).unwrap();
+        lang_string_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
@@ -302,12 +337,12 @@ mod tests {
     }
 
     #[test]
-    fn test_string_write_trig() {
+    fn test_string_write_nquads() {
         let value = "I like turtles";
         let string_literal = LiteralNode::new(&*value);
 
         let mut buf = vec![];
-        string_literal.write_trig(&mut buf).unwrap();
+        string_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
@@ -316,11 +351,11 @@ mod tests {
     }
 
     #[test]
-    fn test_string_write_trig_escaped() {
+    fn test_string_write_nquads_escaped() {
         let string_literal = LiteralNode::new("I\rlike\tescaped\nturtles");
 
         let mut buf = vec![];
-        string_literal.write_trig(&mut buf).unwrap();
+        string_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),

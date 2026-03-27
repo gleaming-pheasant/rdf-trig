@@ -21,43 +21,67 @@ macro_rules! define_ontology {
             #[derive(Debug, PartialEq, Eq, Clone, Copy)]
             pub enum Class { $($c_variant),* }
 
-            #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-            pub enum Term {
-                Property(Property),
-                Class(Class),
-            }
-
-            impl Into<Subject<'static>> for Term {
+            impl Into<Subject<'static>> for Property {
                 #[inline]
                 fn into(self) -> Subject<'static> {
-                    Subject::new_const(
+                    Subject::new_const_named(
                         match self {
-                            $(Self::Property(Property::$p_variant) => concat!($base, $p_local_name),)*
-                            $(Self::Class(Class::$c_variant) => concat!($base, $c_local_name),)*
+                            $(Property::$p_variant => concat!($base, $p_local_name),)*
                         }
                     )
                 }
             }
 
-            impl Into<Predicate<'static>> for Term {
+            impl Into<Subject<'static>> for Class {
+                #[inline]
+                fn into(self) -> Subject<'static> {
+                    Subject::new_const_named(
+                        match self {
+                            $(Class::$c_variant => concat!($base, $c_local_name),)*
+                        }
+                    )
+                }
+            }
+
+            impl Into<Predicate<'static>> for Property {
                 #[inline]
                 fn into(self) -> Predicate<'static> {
                     Predicate::new_const(
                         match self {
-                            $(Self::Property(Property::$p_variant) => concat!($base, $p_local_name),)*
-                            $(Self::Class(Class::$c_variant) => concat!($base, $c_local_name),)*
+                            $(Property::$p_variant => concat!($base, $p_local_name),)*
                         }
                     )
                 }
             }
 
-            impl Into<Object<'static>> for Term {
+            impl Into<Predicate<'static>> for Class {
+                #[inline]
+                fn into(self) -> Predicate<'static> {
+                    Predicate::new_const(
+                        match self {
+                            $(Class::$c_variant => concat!($base, $c_local_name),)*
+                        }
+                    )
+                }
+            }
+
+            impl Into<Object<'static>> for Property {
                 #[inline]
                 fn into(self) -> Object<'static> {
-                    Object::new_const(
+                    Object::new_const_named(
                         match self {
-                            $(Self::Property(Property::$p_variant) => concat!($base, $p_local_name),)*
-                            $(Self::Class(Class::$c_variant) => concat!($base, $c_local_name),)*
+                            $(Property::$p_variant => concat!($base, $p_local_name),)*
+                        }
+                    )
+                }
+            }
+
+            impl Into<Object<'static>> for Class {
+                #[inline]
+                fn into(self) -> Object<'static> {
+                    Object::new_const_named(
+                        match self {
+                            $(Class::$c_variant => concat!($base, $c_local_name),)*
                         }
                     )
                 }
@@ -249,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_valid_iri() {
-        let spl: Predicate<'_> = skos::Property::PrefLabel.into();
+        let spl: Predicate<'static> = skos::Property::PrefLabel.into();
         assert_eq!(
             spl,
             Predicate::new_const("http://www.w3.org/2004/02/skos/core#prefLabel")

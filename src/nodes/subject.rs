@@ -1,4 +1,4 @@
-use crate::nodes::{BlankNode, NamedNode};
+use crate::nodes::{BlankNode, NamedNode, Node};
 
 /// A `Subject` forms part of a `Triple`; it defines the node that the 
 /// rest of the `Triple` expands upon.
@@ -25,5 +25,14 @@ impl<'a> Subject<'a> {
 impl<'a> From<&Subject<'a>> for Subject<'a> {
     fn from(s: &Subject<'a>) -> Self {
         s.clone()
+    }
+}
+
+impl<'a> Into<Node<'a>> for Subject<'a> {
+    fn into(self) -> Node<'a> {
+        match self {
+            Subject::Blank(b) => Node::Blank(b),
+            Subject::Named(n) => Node::Named(n)
+        }
     }
 }

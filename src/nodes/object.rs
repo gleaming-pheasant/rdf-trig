@@ -1,4 +1,4 @@
-use crate::nodes::{BlankNode, NamedNode};
+use crate::nodes::{BlankNode, NamedNode, Node};
 use crate::nodes::literals::LiteralNode;
 
 /// An `Object` is the final part of any `Triple`, effectively providing the 
@@ -14,8 +14,8 @@ use crate::nodes::literals::LiteralNode;
 #[derive(Clone, Debug)]
 pub enum Object<'a> {
     Blank(BlankNode<'a>),
-    Named(NamedNode<'a>),
-    Literal(LiteralNode<'a>)
+    Literal(LiteralNode<'a>),
+    Named(NamedNode<'a>)
 }
 
 impl<'a> Object<'a> {
@@ -27,5 +27,15 @@ impl<'a> Object<'a> {
 impl<'a> From<&Object<'a>> for Object<'a> {
     fn from(o: &Object<'a>) -> Self {
         o.clone()
+    }
+}
+
+impl<'a> Into<Node<'a>> for Object<'a> {
+    fn into(self) -> Node<'a> {
+        match self {
+            Object::Blank(b) => Node::Blank(b),
+            Object::Literal(l) => Node::Literal(l),
+            Object::Named(n) => Node::Named(n)
+        }
     }
 }

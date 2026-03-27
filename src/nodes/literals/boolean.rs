@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteNQuads;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
+use crate::traits::{WriteNQuads, WriteTriG};
 
-const XSD_BOOLEAN: &[u8; 42] = b"<http://www.w3.org/2001/XMLSchema#boolean>";
+// Unfortunately these can't be concat!-ed to a single static string from consts.
+const XSD_BOOLEAN_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#boolean>";
 
 /// A wrapper around a [`bool`], which can be constructed either with a 
 /// native `bool`, or with a string equal to "1"/"0" or "true"/"false".
@@ -73,7 +74,14 @@ impl WriteNQuads for BooleanLiteral {
         writer.write_all(b"\"")?;
         writer.write_all(self.0.to_string().as_bytes())?;
         writer.write_all(b"\"^^")?;
-        writer.write_all(XSD_BOOLEAN)?;
+        writer.write_all(XSD_BOOLEAN_IRI.as_bytes())?;
+        Ok(())
+    }
+}
+
+impl WriteTriG for BooleanLiteral {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(self.0.to_string().as_bytes())?;
         Ok(())
     }
 }

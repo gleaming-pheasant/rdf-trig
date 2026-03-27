@@ -10,9 +10,9 @@ use time::macros::format_description;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
-use crate::traits::{ToStatic, WriteNQuads};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
-const XSD_DATETIME: &[u8; 43] = b"<http://www.w3.org/2001/XMLSchema#dateTime>";
+const XSD_DATETIME_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#dateTime>";
 
 const FMT_NAIVE_SUBSECOND: &[time::format_description::FormatItem<'_>] = 
     format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]");
@@ -154,7 +154,17 @@ impl WriteNQuads for DateTimeLiteral<'_> {
         writer.write_all(b"\"")?;
         writer.write_all(self.0.as_bytes())?;
         writer.write_all(b"\"^^")?;
-        writer.write_all(XSD_DATETIME)?;
+        writer.write_all(XSD_DATETIME_IRI.as_bytes())?;
+
+        Ok(())
+    }
+}
+
+impl WriteTriG for DateTimeLiteral<'_> {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"\"")?;
+        writer.write_all(self.0.as_bytes())?;
+        writer.write_all(b"\"^^xsd:dateTime")?;
 
         Ok(())
     }

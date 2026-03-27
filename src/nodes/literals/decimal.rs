@@ -3,12 +3,12 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 
-use crate::WriteNQuads;
 use crate::errors::RdfTrigError;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
+use crate::traits::{WriteNQuads, WriteTriG};
 
-const XSD_DECIMAL: &[u8; 42] = b"<http://www.w3.org/2001/XMLSchema#decimal>";
+const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal>";
 
 /// A wrapper around an [`f32`], which can be constructed either with a 
 /// native `f32`, or with a string which can be parsed as one.
@@ -79,7 +79,21 @@ impl WriteNQuads for DecimalLiteral {
             writer.write_all(b".")?;
         }
         writer.write_all(b"\"^^")?;
-        writer.write_all(XSD_DECIMAL)?;
+        writer.write_all(XSD_DECIMAL_IRI.as_bytes())?;
+        Ok(())
+    }
+}
+
+impl WriteTriG for DecimalLiteral {
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(self.0.to_string().as_bytes())?;
+        // Trailling period is to ensure this is captured as a decimal by TriG 
+        // parsers where the fractional part is 0. This is because decimal types 
+        // are inferred in TriG by a trailling decimal.
+        if self.0.fract() == 0.0 {
+            writer.write_all(b".")?;
+        }
+
         Ok(())
     }
 }

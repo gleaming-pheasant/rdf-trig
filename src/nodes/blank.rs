@@ -1,15 +1,10 @@
 /// A `BlankNode` is a standard RDF blank node. It serves as a a place to store 
 /// known facts about a resource within a graph, without knowing the resource's 
 /// specific IRI.
-/// 
-/// `BlankNode` directly implements [`WriteTriG`], prefixing the provided id 
-/// with the standard blank node "_:" prefix.
-/// 
-/// `BlankNode`s cannot be initialised directly, and must be generated as part 
-/// of [`Subject`] or [`Object`] constructors.
 use std::borrow::Cow;
 use std::io::{self, Write};
 
+use crate::nodes::Node;
 use crate::nodes::subject::Subject;
 use crate::nodes::object::Object;
 use crate::traits::{ToStatic, WriteNQuads};
@@ -62,6 +57,12 @@ impl<'a> Into<Subject<'a>> for &'a BlankNode<'a> {
     }
 }
 
+impl<'a> Into<Node<'a>> for BlankNode<'a> {
+    fn into(self) -> Node<'a> {
+        Node::Blank(self)
+    }
+}
+
 impl<'a> ToStatic for BlankNode<'a> {
     type StaticType = BlankNode<'static>;
 
@@ -72,6 +73,7 @@ impl<'a> ToStatic for BlankNode<'a> {
 }
 
 impl WriteNQuads for BlankNode<'_> {
+    #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
        writer.write_all(b"_:")?;
         write_escaped_local_name(writer, &self.0)?;

@@ -1,4 +1,4 @@
-use crate::nodes::NamedNode;
+use crate::nodes::{NamedNode, Node};
 use crate::traits::ToStatic;
 
 /// A `Predicate` forms the middle part of any `Triple`, establishing the 
@@ -13,7 +13,7 @@ use crate::traits::ToStatic;
 /// Without being added to a [`Triple`](crate::triples::Triple) and stored in a 
 /// [`TripleStore`](crate::triplestore::TripleStore), this struct serves no 
 /// practical purpose.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Predicate<'a>(pub(crate) NamedNode<'a>);
 
 impl<'a> Predicate<'a> {
@@ -36,5 +36,11 @@ impl<'a> ToStatic for Predicate<'a> {
     #[inline]
     fn to_static(&self) -> Self::StaticType {
         Predicate(self.0.to_static())
+    }
+}
+
+impl<'a> Into<Node<'a>> for Predicate<'a> {
+    fn into(self) -> Node<'a> {
+        Node::Named(self.0)
     }
 }

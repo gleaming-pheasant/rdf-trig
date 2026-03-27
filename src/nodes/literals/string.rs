@@ -9,38 +9,41 @@ use crate::traits::ToStatic;
 use crate::utils::write_escaped_literal;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct LangStringLiteral<'a> {
+pub struct StringLiteral<'a> {
     value: Cow<'a, str>,
-    language: Cow<'a, str>
+    language: Option<Cow<'a, str>>
 }
 
-impl<'a> LangStringLiteral<'a> {
+impl<'a> StringLiteral<'a> {
     /// Create a new `LiteralNode::LangString` from the provided `value` and 
     /// `language` `str`s.
     /// 
     /// Validates the `language` as an ISO 639-1 2-digit language code.
-    pub fn new<V, L>(value: V, language: L)
-    -> Result<LangStringLiteral<'a>, RdfTrigError>
+    pub fn new<V, L>(value: V, language: Option<L>)
+    -> Result<StringLiteral<'a>, RdfTrigError>
     where
         V: Into<Cow<'a, str>>,
         L: Into<Cow<'a, str>>
     {
-        let language = language.into();
+        let language = language.and_then(|lang| Some(lang.into()));
 
-        if !(language.len() == 2 || language.len() == 3) ||
-        !language.chars().all(char::is_alphabetic) {
-            return Err(RdfTrigError::InvalidLanguage(language.to_string()))
+        if let Some(lang) = &language {
+            if !(lang.len() == 2 || lang.len() == 3) ||
+            !lang.chars().all(char::is_alphabetic) {
+                return Err(RdfTrigError::InvalidLanguage(lang.to_string()))
+            }
         }
 
-        Ok(LangStringLiteral { value: value.into(), language })
+
+        Ok(StringLiteral { value: value.into(), language })
     }
 
     /// Create a new `LiteralNode::LangString` from the provided `value`.
     /// 
     /// Sets the `language` to "en" (English).
     pub fn new_en<V: Into<Cow<'a, str>>>(value: V)
-    -> LangStringLiteral<'a> {
-        LangStringLiteral { value: value.into(), language: "en".into() }
+    -> StringLiteral<'a> {
+        StringLiteral { value: value.into(), language: Some("en".into()) }
     }
 
     /// Get a `str` slice reference to the `value`.
@@ -49,43 +52,51 @@ impl<'a> LangStringLiteral<'a> {
     }
 
     /// Get a `str` slice reference to the `language`.
-    pub fn language(&self) -> &str {
-        &self.language
+    pub fn language(&self) -> Option<&str> {
+        self.language.as_deref()
     }
 }
 
-impl<'a> Into<LiteralNode<'a>> for LangStringLiteral<'a> {
+impl<'a> Into<LiteralNode<'a>> for StringLiteral<'a> {
     #[inline(always)]
     fn into(self) -> LiteralNode<'a> {
-        LiteralNode::LangString(self)
+        LiteralNode::String(self)
     }
 }
 
-impl<'a> Into<Object<'a>> for LangStringLiteral<'a> {
+impl<'a> Into<Object<'a>> for StringLiteral<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
         Object::Literal(self.into())
     }
 }
 
-impl<'a> ToStatic for LangStringLiteral<'a> {
-    type StaticType = LangStringLiteral<'static>;
+impl<'a> ToStatic for StringLiteral<'a> {
+    type StaticType = StringLiteral<'static>;
 
     #[inline]
     fn to_static(&self) -> Self::StaticType {
-        LangStringLiteral {
+        let language = self.language.as_ref().and_then(|lang| {
+            Some(Cow::Owned(lang.clone().into_owned()))
+        });      
+
+        StringLiteral {
             value: Cow::Owned(self.value.clone().into_owned()),
-            language: Cow::Owned(self.language.clone().into_owned()),
+            language
         }
     }
 }
 
-impl<'a> WriteNQuads for LangStringLiteral<'a> {
+impl<'a> WriteNQuads for StringLiteral<'a> {
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         write_escaped_literal(writer, &self.value)?;
-        writer.write_all(b"\"@")?;
-        writer.write_all(self.language.as_bytes())?;
+        writer.write_all(b"\"")?;
+
+        if let Some(lang) = self.language() {
+            writer.write_all(b"@")?;
+            writer.write_all(lang.as_bytes())?;
+        }   
 
         Ok(())
     }

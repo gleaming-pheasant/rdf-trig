@@ -8,12 +8,13 @@ pub use boolean::BooleanLiteral;
 pub use datetime::DateTimeLiteral;
 pub use decimal::DecimalLiteral;
 pub use gyear::GYearLiteral;
-pub use string::LangStringLiteral;
+pub use string::StringLiteral;
 
 use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::WriteNQuads;
+use crate::nodes::Node;
 use crate::nodes::object::Object;
 use crate::traits::ToStatic;
 use crate::utils::write_escaped_literal;
@@ -28,8 +29,7 @@ pub enum LiteralNode<'a> {
     DateTime(DateTimeLiteral<'a>),
     Decimal(DecimalLiteral),
     GYear(GYearLiteral),
-    LangString(LangStringLiteral<'a>),
-    String(Cow<'a, str>)
+    String(StringLiteral<'a>)
 }
 
 impl<'a> LiteralNode<'a> {
@@ -67,6 +67,12 @@ impl<'a> Into<Object<'a>> for &'a LiteralNode<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
         Object::Literal(self.clone())
+    }
+}
+
+impl<'a> Into<Node<'a>> for LiteralNode<'a> {
+    fn into(self) -> Node<'a> {
+        Node::Literal(self)
     }
 }
 

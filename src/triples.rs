@@ -1,22 +1,20 @@
+use std::io::{self, Write};
 use std::ops::Deref;
 
+use indexmap::set::Iter;
+
 use crate::FastIndexSet;
-use crate::nodes::{
-    Graph,
-    NodeId,
-    Object,
-    Predicate,
-    Subject
-};
+use crate::nodes::{Graph, Node, NodeId, Object, Predicate, Subject};
+use crate::traits::WriteNQuads;
 
 /// A `Triple` is wrapper around the three constituent parts of an RDF triple: 
 /// [`Subject`], [`Predicate`] and [`Object`], as well as an optional [`Graph`].
 #[derive(Clone, Debug)]
 pub struct Triple<'a> {
-    graph: Option<Graph<'a>>,
     subject: Subject<'a>,
     predicate: Predicate<'a>,
-    object: Object<'a>
+    object: Object<'a>,
+    graph: Option<Graph<'a>>
 }
 
 impl<'a> Triple<'a> {
@@ -29,28 +27,28 @@ impl<'a> Triple<'a> {
         O: Into<Object<'a>>
     {
         Triple {
-            graph: None,
             subject: subject.into(),
             predicate: predicate.into(),
-            object: object.into()
+            object: object.into(),
+            graph: None
         }
     }
 
     /// Create a new `Triple` from parts, with a defined graph.
     pub fn new_with_graph<G,S,P,O>(
-        graph: G, subject: S, predicate: P, object: O
+        subject: S, predicate: P, object: O, graph: G
     ) -> Triple<'a>
     where
-        G: Into<Graph<'a>>,
         S: Into<Subject<'a>>,
         P: Into<Predicate<'a>>,
-        O: Into<Object<'a>>
+        O: Into<Object<'a>>,
+        G: Into<Graph<'a>>
     {
         Triple {
-            graph: Some(graph.into()),
             subject: subject.into(),
             predicate: predicate.into(),
-            object: object.into()
+            object: object.into(),
+            graph: Some(graph.into()),
         }
     }
 
@@ -134,6 +132,10 @@ impl InternedTripleStore {
         InternedTripleId::from(self.0.insert_full(triple).0)
     }
 
+    pub(crate) fn iter(&self) -> Iter<'_, InternedTriple> {
+        self.0.iter()
+    }
+
     /// Retrieve an `InternedTriple` reference from the provided 
     /// `InternedTripleId`.
     /// 
@@ -175,5 +177,47 @@ impl Deref for InternedTripleId {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// A `TripleView` serves as a means to view a [`Triple`] as raw [`Node`]s. This 
+/// allows an interned `Triple` to be formatted in RDF formats (e.g. with 
+/// [`WriteNQuads`]), without re-abstracting to [`Subject`]s, [`Predicate`]s or 
+/// [`Object`]s.
+pub(crate) struct TripleView<'a> {
+    subject: &'a Node<'static>,
+    predicate: &'a Node<'static>,
+    object: &'a Node<'static>,
+    graph: Option<&'a Node<'static>>
+}
+
+impl<'a> TripleView<'a> {
+    /// Create a new `TripleView` from parts.
+    pub(crate) fn new(
+        subject: &'a Node<'static>,
+        predicate: &'a Node<'static>,
+        object: &'a Node<'static>,
+        graph: Option<&'a Node<'static>>
+    ) -> TripleView<'a> {
+        TripleView { graph, subject, predicate, object }
+    }
+}
+
+impl WriteNQuads for TripleView<'_> {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.subject.write_nquads(writer)?;
+        writer.write_all(b" ")?;
+        self.predicate.write_nquads(writer)?;
+        writer.write_all(b" ")?;
+        self.object.write_nquads(writer)?;
+
+        if let Some(graph) = self.graph {
+            writer.write_all(b" ")?;
+            graph.write_nquads(writer)?;
+        }
+
+        writer.write_all(b" .\n")?;
+        
+        Ok(())
     }
 }

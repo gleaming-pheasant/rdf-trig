@@ -15,12 +15,10 @@ or major), will probably have breaking changes.
 
 ## Usage Examples
 ### Add Multiple Triples to a Graph
-```rust
+<!-- ```rust
 use rdf_trig::{
-    IriNode, LangStringLiteral, Namespace, TripleStore, Triple, WriteTriG
+    IriNode, LangStringLiteral, TripleStore, Triple, WriteNQuads
 };
-use rdf_trig::namespaces::statics::OWL;
-use rdf_trig::nodes::predicate::RDF_TYPE;
 
 let mut store = TripleStore::new();
 
@@ -55,7 +53,7 @@ store.add_triple(label_triple);
 
 let mut buf = vec![];
 
-store.write_trig(&mut buf).unwrap();
+store.write_nquads(&mut buf).unwrap();
 
 let string_output = String::from_utf8(buf).unwrap();
 
@@ -80,7 +78,7 @@ assert!(string_output.contains(
     "nodes:Object123 schema:hasCustomLabel \"is a Thing\"@en ."
 ));
 
-```
+``` -->
 
 ## A Note on Accepted Values
 ### *All Escaped Values*
