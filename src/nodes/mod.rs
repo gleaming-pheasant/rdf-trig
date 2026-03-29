@@ -24,7 +24,7 @@ pub use literals::{
     DecimalLiteral,
     DateTimeLiteral,
     GYearLiteral,
-    LangStringLiteral,
+    StringLiteral,
     LiteralNode
 };
 pub use object::Object;
@@ -300,18 +300,18 @@ mod tests {
 
     #[test]
     fn test_lang_string_valid_lang() {
-        assert!(LangStringLiteral::new("My String", "fra").is_ok());
+        assert!(StringLiteral::new("My String", Some("fra")).is_ok());
     }
 
     #[test]
     fn test_lang_string_invalid_lang() {
-        assert!(LangStringLiteral::new("My String", "francais").is_err());
+        assert!(StringLiteral::new("My String", Some("francais")).is_err());
     }
 
     #[test]
     fn test_lang_string_valid_lang_write_nquads() {
         let value = "My String";
-        let langstring_literal = LangStringLiteral::new(value, "gr")
+        let langstring_literal = StringLiteral::new(value, Some("gr"))
             .unwrap();
 
         let mut buf = vec![];
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_lang_string_en_write_nquads() {
         let value = "My String";
-        let lang_string_literal = LangStringLiteral::new_en(value);
+        let lang_string_literal = StringLiteral::new_en(value);
 
         let mut buf = vec![];
         lang_string_literal.write_nquads(&mut buf).unwrap();

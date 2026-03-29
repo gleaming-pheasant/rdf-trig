@@ -16,7 +16,7 @@ pub(crate) mod utils;
 pub use triplestore::TripleStore;
 pub use nodes::{
     BlankNode, BooleanLiteral, DateTimeLiteral, DecimalLiteral, GYearLiteral, 
-    NamedNode, LangStringLiteral, LiteralNode, named::statics
+    NamedNode, LiteralNode, StringLiteral, named::statics
 };
 pub use triples::Triple;
 pub use traits::WriteNQuads;
