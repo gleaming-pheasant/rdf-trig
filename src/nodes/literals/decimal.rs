@@ -12,10 +12,6 @@ const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal
 
 /// A wrapper around an [`f32`], which can be constructed either with a 
 /// native `f32`, or with a string which can be parsed as one.
-/// 
-/// Values in this struct are stored as `f32`s and output with a custom `f32` 
-/// formatting in [`WriteTriG`], which appends a period (".") if the value is a 
-/// whole number.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DecimalLiteral(f32);
 

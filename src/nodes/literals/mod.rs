@@ -16,7 +16,7 @@ use std::io::{self, Write};
 use crate::WriteNQuads;
 use crate::nodes::Node;
 use crate::nodes::object::Object;
-use crate::traits::ToStatic;
+use crate::traits::{ToStatic, WriteTriG};
 
 /// A wrapper around the possible options that this crate declares for literal 
 /// nodes (`GYearLiteral`s, `StringLiteral`s, etc). Each specific type - with 
@@ -98,7 +98,8 @@ impl<'a> ToStatic for LiteralNode<'a> {
     }
 }
 
-impl<'a> WriteNQuads for LiteralNode<'a> {
+impl WriteNQuads for LiteralNode<'_> {
+    #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
             LiteralNode::Boolean(bool) => bool.write_nquads(writer),
@@ -106,6 +107,19 @@ impl<'a> WriteNQuads for LiteralNode<'a> {
             LiteralNode::Decimal(dec) => dec.write_nquads(writer),
             LiteralNode::GYear(gy) => gy.write_nquads(writer),
             LiteralNode::String(ls) => ls.write_nquads(writer)
+        }
+    }
+}
+
+impl WriteTriG for LiteralNode<'_> {
+    #[inline]
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            LiteralNode::Boolean(bool) => bool.write_trig(writer),
+            LiteralNode::DateTime(dt) => dt.write_trig(writer),
+            LiteralNode::Decimal(dec) => dec.write_trig(writer),
+            LiteralNode::GYear(gy) => gy.write_trig(writer),
+            LiteralNode::String(ls) => ls.write_trig(writer)
         }
     }
 }

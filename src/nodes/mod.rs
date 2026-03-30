@@ -34,7 +34,7 @@ pub(crate) use store::{NodeId, NodeStore};
 
 use std::io::{self, Write};
 
-use crate::traits::{ToStatic, WriteNQuads};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 
 // Must be an enum not a trait, in order to implement `Hash` via macro.
@@ -64,6 +64,17 @@ impl WriteNQuads for Node<'_> {
             Node::Blank(b) => b.write_nquads(writer),
             Node::Literal(l) => l.write_nquads(writer),
             Node::Named(n) => n.write_nquads(writer)
+        }
+    }
+}
+
+impl WriteTriG for Node<'_> {
+    #[inline]
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            Node::Blank(b) => b.write_trig(writer),
+            Node::Literal(l) => l.write_trig(writer),
+            Node::Named(n) => n.write_trig(writer)
         }
     }
 }

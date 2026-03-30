@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use crate::nodes::Node;
 use crate::nodes::subject::Subject;
 use crate::nodes::object::Object;
-use crate::traits::{ToStatic, WriteNQuads};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 
@@ -79,5 +79,13 @@ impl WriteNQuads for BlankNode<'_> {
         write_escaped_local_name(writer, &self.0)?;
 
         Ok(()) 
+    }
+}
+
+impl WriteTriG for BlankNode<'_> {
+    #[inline]
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+       // Identical representation in both TriG and N-Quads
+       self.write_nquads(writer)
     }
 }

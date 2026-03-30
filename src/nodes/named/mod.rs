@@ -5,7 +5,7 @@ use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
 use crate::nodes::{Graph, Node, Object, Predicate, Subject};
-use crate::traits::{ToStatic, WriteNQuads};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct NamedNode<'a>(Cow<'a, str>);
@@ -27,15 +27,6 @@ impl<'a> NamedNode<'a> {
     /// properties and classes.
     pub(crate) const fn new_const(iri: &'static str) -> NamedNode<'static> {
         NamedNode(Cow::Borrowed(iri))
-    }
-}
-
-impl WriteNQuads for NamedNode<'_> {
-    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"<")?;
-        writer.write_all(self.0.as_bytes())?;
-        writer.write_all(b">")?;
-        Ok(())
     }
 }
 
@@ -107,5 +98,22 @@ impl<'a> ToStatic for NamedNode<'a> {
     #[inline]
     fn to_static(&self) -> Self::StaticType {
         NamedNode(Cow::Owned(self.0.clone().into_owned()))
+    }
+}
+
+impl WriteNQuads for NamedNode<'_> {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"<")?;
+        writer.write_all(self.0.as_bytes())?;
+        writer.write_all(b">")?;
+        Ok(())
+    }
+}
+
+impl WriteTriG for NamedNode<'_> {
+    #[inline]
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        // Crate doesn't add prefixes or shorten NamedNodes, so same as N-Quads.
+        self.write_nquads(writer)
     }
 }

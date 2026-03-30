@@ -10,7 +10,7 @@ use crate::traits::ToStatic;
 /// 
 /// This will cause the application to panic if the number of interned nodes 
 /// exceeds [`u32::MAX`].
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) struct NodeId(pub(crate) u32);
 
 impl NodeId {
