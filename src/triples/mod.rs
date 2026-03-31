@@ -1,7 +1,7 @@
 mod store;
 mod view;
 
-pub(crate) use store::{InternedTripleId, InternedTripleStore};
+pub(crate) use store::InternedTripleStore;
 pub(crate) use view::TripleView;
 
 use crate::nodes::{Graph, NodeId, Object, Predicate, Subject};

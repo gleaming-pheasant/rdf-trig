@@ -6,7 +6,6 @@ use std::io::{self, Write};
 use crate::nodes::{NodeId, NodeStore, Node};
 use crate::triples::{
     InternedTriple,
-    InternedTripleId,
     InternedTripleStore,
     Triple,
     TripleView

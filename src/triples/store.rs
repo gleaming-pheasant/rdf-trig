@@ -33,21 +33,6 @@ impl InternedTripleStore {
     pub(crate) fn iter(&self) -> indexmap::set::Iter<'_, InternedTriple> {
         self.0.iter()
     }
-
-    /// Retrieve an `InternedTriple` reference from the provided 
-    /// `InternedTripleId`.
-    /// 
-    /// Use of [`Option::unwrap`] is considered safe in this function, as the 
-    /// crate only allows the generation of `InternedTripleId`s is only through 
-    /// [`Self::intern_triple`].
-    /// 
-    /// Any future functionality that allows removal of items from `...Store`s 
-    /// must address this.
-    pub(crate) fn query_triple(
-        &self, triple_id: InternedTripleId
-    ) -> &InternedTriple {
-        self.0.get_index(*triple_id as usize).unwrap()
-    }
 }
 
 /// A `InternedTripleId` is a wrapper around a `u32` and is only retrievable by 

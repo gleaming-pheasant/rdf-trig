@@ -7,14 +7,6 @@ pub enum Graph<'a> {
     Named(NamedNode<'a>)
 }
 
-impl<'a> Graph<'a> {
-    /// Create a new `Graph` from 'static values. Only accessible within 
-    /// this crate to bypass IRI validation.
-    pub(crate) const fn new_const_named(iri: &'static str) -> Graph<'a> {
-        Graph::Named(NamedNode::new_const(iri))
-    }
-}
-
 impl<'a> From<&Graph<'a>> for Graph<'a> {
     fn from(p: &Graph<'a>) -> Self {
         p.clone()
