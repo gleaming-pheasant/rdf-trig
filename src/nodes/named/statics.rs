@@ -13,7 +13,7 @@ macro_rules! define_ontology {
         Classes { $($c_variant:ident => $c_local_name:literal),* $(,)? }
     ) => {
         pub mod $ontology {
-            use crate::nodes::{Object, Predicate, Subject};
+            use crate::nodes::{NamedNode, Object, Predicate, Subject};
 
             #[derive(Debug, PartialEq, Eq, Clone, Copy)]
             pub enum Property { $($p_variant),* }
@@ -80,6 +80,28 @@ macro_rules! define_ontology {
                 #[inline]
                 fn into(self) -> Object<'static> {
                     Object::new_const_named(
+                        match self {
+                            $(Class::$c_variant => concat!($base, $c_local_name),)*
+                        }
+                    )
+                }
+            }
+
+            impl Into<NamedNode<'static>> for Property {
+                #[inline]
+                fn into(self) -> NamedNode<'static> {
+                    NamedNode::new_const(
+                        match self {
+                            $(Property::$p_variant => concat!($base, $p_local_name),)*
+                        }
+                    )
+                }
+            }
+
+            impl Into<NamedNode<'static>> for Class {
+                #[inline]
+                fn into(self) -> NamedNode<'static> {
+                    NamedNode::new_const(
                         match self {
                             $(Class::$c_variant => concat!($base, $c_local_name),)*
                         }
