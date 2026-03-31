@@ -13,8 +13,6 @@ pub use string::StringLiteral;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::nodes::Node;
-use crate::nodes::object::Object;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 /// A wrapper around the possible options that this crate declares for literal 
@@ -46,40 +44,48 @@ impl<'a> LiteralNode<'a> {
     }
 }
 
-impl<'a> Into<LiteralNode<'a>> for Cow<'a, str> {
+impl<'a> From<BooleanLiteral> for LiteralNode<'a> {
     #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
+    fn from(value: BooleanLiteral) -> LiteralNode<'a> {
+        LiteralNode::Boolean(value)
+    }
+}
+
+impl<'a> From<DateTimeLiteral<'a>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: DateTimeLiteral<'a>) -> LiteralNode<'a> {
+        LiteralNode::DateTime(value)
+    }
+}
+
+impl<'a> From<DecimalLiteral> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: DecimalLiteral) -> LiteralNode<'a> {
+        LiteralNode::Decimal(value)
+    }
+}
+
+impl<'a> From<GYearLiteral> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: GYearLiteral) -> LiteralNode<'a> {
+        LiteralNode::GYear(value)
+    }
+}
+
+impl<'a> From<StringLiteral<'a>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: StringLiteral<'a>) -> LiteralNode<'a> {
+        LiteralNode::String(value)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: Cow<'a, str>) -> LiteralNode<'a> {
         LiteralNode::String(
-            StringLiteral::new(self, None::<Cow<'a,str>>)
+            StringLiteral::new(value, None::<Cow<'a,str>>)
                 .unwrap() // Safe - see `LiteralNode::new()`
         )
-    }
-}
-
-impl<'a> Into<Object<'a>> for Cow<'a, str> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
-    }
-}
-
-impl<'a> Into<Object<'a>> for LiteralNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for &'a LiteralNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.clone())
-    }
-}
-
-impl<'a> Into<Node<'a>> for LiteralNode<'a> {
-    fn into(self) -> Node<'a> {
-        Node::Literal(self)
     }
 }
 

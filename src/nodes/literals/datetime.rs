@@ -8,8 +8,6 @@ use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 
 use crate::errors::RdfTrigError;
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 const XSD_DATETIME_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#dateTime>";
@@ -123,20 +121,6 @@ impl<'a> TryFrom<OffsetDateTime> for DateTimeLiteral<'a> {
                 ))
             }
         }
-    }
-}
-
-impl<'a> Into<LiteralNode<'a>> for DateTimeLiteral<'a> {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::DateTime(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for DateTimeLiteral<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
     }
 }
 

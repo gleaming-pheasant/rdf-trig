@@ -19,12 +19,9 @@ pub struct Triple<'a> {
 impl<'a> Triple<'a> {
     /// Create a new `Triple` from parts. This triple will automatically be 
     /// assigned to the default graph.
-    pub fn new<S,P,O>(subject: S, predicate: P, object: O) -> Triple<'a>
-    where
-        S: Into<Subject<'a>>,
-        P: Into<Predicate<'a>>,
-        O: Into<Object<'a>>
-    {
+    pub fn new(
+        subject: Subject<'a>, predicate: Predicate<'a>, object: Object<'a>
+    ) -> Triple<'a> {
         Triple {
             graph: None,
             subject: subject.into(),
@@ -34,15 +31,9 @@ impl<'a> Triple<'a> {
     }
 
     /// Create a new `Triple` from parts, with a defined graph.
-    pub fn new_with_graph<G,S,P,O>(
-        graph: G, subject: S, predicate: P, object: O
-    ) -> Triple<'a>
-    where
-        G: Into<Graph<'a>>,
-        S: Into<Subject<'a>>,
-        P: Into<Predicate<'a>>,
-        O: Into<Object<'a>>
-    {
+    pub fn new_with_graph(
+        graph: Graph<'a>, subject: Subject<'a>, predicate: Predicate<'a>, object: Object<'a>
+    ) -> Triple<'a> {
         Triple {
             subject: subject.into(),
             predicate: predicate.into(),

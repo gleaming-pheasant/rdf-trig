@@ -4,8 +4,6 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
 use crate::traits::{WriteNQuads, WriteTriG};
 
 const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal>";
@@ -50,20 +48,6 @@ impl From<f32> for DecimalLiteral {
     #[inline]
     fn from(value: f32) -> Self {
         DecimalLiteral(value)
-    }
-}
-
-impl<'a> Into<LiteralNode<'a>> for DecimalLiteral {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::Decimal(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for DecimalLiteral {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::nodes::{NamedNode, Node};
+use crate::nodes::NamedNode;
 use crate::traits::ToStatic;
 
 /// A `Predicate` forms the middle part of any `Triple`, establishing the 
@@ -30,17 +30,25 @@ impl<'a> From<&Predicate<'a>> for Predicate<'a> {
     }
 }
 
+impl<'a> From<NamedNode<'a>> for Predicate<'a> {
+    #[inline]
+    fn from(value: NamedNode<'a>) -> Predicate<'a> {
+        Predicate(value)
+    }
+}
+
+impl<'a> From<&NamedNode<'a>> for Predicate<'a> {
+    #[inline]
+    fn from(value: &NamedNode<'a>) -> Predicate<'a> {
+        Predicate(value.clone())
+    }
+}
+
 impl<'a> ToStatic for Predicate<'a> {
     type StaticType = Predicate<'static>;
 
     #[inline]
     fn to_static(&self) -> Self::StaticType {
         Predicate(self.0.to_static())
-    }
-}
-
-impl<'a> Into<Node<'a>> for Predicate<'a> {
-    fn into(self) -> Node<'a> {
-        Node::Named(self.0)
     }
 }

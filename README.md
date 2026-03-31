@@ -42,24 +42,24 @@ let subject_iri = "urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36";
 
 ts.add_triple(Triple::new(
     // Cloning existing Nodes only clones references to contained strings.
-    NamedNode::new(subject_iri).unwrap(),
-    rdf::Property::Type,
-    owl::Class::Thing
+    NamedNode::new(subject_iri).unwrap().into(),
+    rdf::Property::Type.into(),
+    owl::Class::Thing.into()
 ));
 
 ts.add_triple(Triple::new(
-    NamedNode::new(subject_iri).unwrap(),
-    rdfs::Property::Label,
+    NamedNode::new(subject_iri).unwrap().into(),
+    rdfs::Property::Label.into(),
     // Only 2- or 3-digit ASCII alpha language codes are allowed.
-    StringLiteral::new("L'étiquette de ma ressource", Some("fr")).unwrap()
+    StringLiteral::new("L'étiquette de ma ressource", Some("fr")).unwrap().into()
 ));
 
 ts.add_triple(Triple::new_with_graph(
     // Add a Graph
-    NamedNode::new("https://www.example.com/MyGraph").unwrap(),
-    NamedNode::new(subject_iri).unwrap(),
-    aocat::Property::WasCreatedOn,
-    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap()
+    NamedNode::new("https://www.example.com/MyGraph").unwrap().into(),
+    NamedNode::new(subject_iri).unwrap().into(),
+    aocat::Property::WasCreatedOn.into(),
+    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap().into()
 ));
 
 // Write... traits implement Write, so we need to write to a Vec<u8> and parse.
@@ -87,33 +87,29 @@ use rdf_trig::traits::WriteTriG;
 // Create the master 
 let mut ts = TripleStore::new();
 
-// While you can use references to nodes in `Triple` constructors, always prefer 
-// using string references to construct a node each time.
-// Of the following two variables, reusing `subject` will cause the contained 
-// `&'static str` to be cloned as a String to create a `Cow::Owned`.
 let graph_iri = "https://www.example.com/MyGraph";
 let subject = NamedNode::new("urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36")
     .unwrap();
 
 ts.add_triple(Triple::new_with_graph(
-    NamedNode::new(graph_iri).unwrap(),
-    &subject,
-    rdf::Property::Type,
-    owl::Class::Thing
+    NamedNode::new(graph_iri).unwrap().into(),
+    (&subject).into(),
+    rdf::Property::Type.into(),
+    owl::Class::Thing.into()
 ));
 
 ts.add_triple(Triple::new_with_graph(
-    NamedNode::new(graph_iri).unwrap(),
-    &subject,
-    skos::Property::PrefLabel,
-    StringLiteral::new_en("My resource's label") // English language
+    NamedNode::new(graph_iri).unwrap().into(),
+    (&subject).into(),
+    skos::Property::PrefLabel.into(),
+    StringLiteral::new_en("My resource's label").into() // English language
 ));
 
 ts.add_triple(Triple::new(
     // Using the same subject, but without a Graph.
-    &subject,
-    aocat::Property::WasCreatedOn,
-    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap()
+    (&subject).into(),
+    aocat::Property::WasCreatedOn.into(),
+    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap().into()
 ));
 
 let mut buf = vec![];

@@ -4,9 +4,6 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::nodes::Node;
-use crate::nodes::subject::Subject;
-use crate::nodes::object::Object;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 use crate::utils::write_escaped_local_name;
 
@@ -26,40 +23,6 @@ impl<'a> BlankNode<'a> {
     /// Get a reference to the label for this `BlankNode`.
     pub fn label(&self)  -> &str {
         &self.0
-    }
-}
-
-impl<'a> Into<Object<'a>> for BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Blank(self)
-    }
-}
-
-impl<'a> Into<Subject<'a>> for BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Blank(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for &'a BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Blank(BlankNode(Cow::Borrowed(&self.0)))
-    }
-}
-
-impl<'a> Into<Subject<'a>> for &'a BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Blank(BlankNode(Cow::Borrowed(&self.0)))
-    }
-}
-
-impl<'a> Into<Node<'a>> for BlankNode<'a> {
-    fn into(self) -> Node<'a> {
-        Node::Blank(self)
     }
 }
 

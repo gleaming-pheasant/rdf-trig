@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
 use crate::traits::{WriteNQuads, WriteTriG};
 
 // Unfortunately these can't be concat!-ed to a single static string from consts.
@@ -33,20 +31,6 @@ impl BooleanLiteral {
             "0" | "false" => Ok(BooleanLiteral(false)),
             _ => Err(RdfTrigError::InvalidBoolean(value.to_string()))
         }
-    }
-}
-
-impl<'a> Into<Object<'a>> for BooleanLiteral {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
-    }
-}
-
-impl<'a> Into<LiteralNode<'a>> for BooleanLiteral {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::Boolean(self)
     }
 }
 

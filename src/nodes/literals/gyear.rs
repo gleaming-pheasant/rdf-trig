@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
 use crate::traits::{WriteNQuads, WriteTriG};
 
 const XSD_GYEAR_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#gYear>";
@@ -38,20 +36,6 @@ impl From<i32> for GYearLiteral {
     #[inline]
     fn from(value: i32) -> Self {
         GYearLiteral(value)
-    }
-}
-
-impl<'a> Into<LiteralNode<'a>> for GYearLiteral {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::GYear(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for GYearLiteral {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
     }
 }
 

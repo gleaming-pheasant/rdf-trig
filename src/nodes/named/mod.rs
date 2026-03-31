@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
-use crate::nodes::{Graph, Node, Object, Predicate, Subject};
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -27,68 +26,6 @@ impl<'a> NamedNode<'a> {
     /// properties and classes.
     pub(crate) const fn new_const(iri: &'static str) -> NamedNode<'static> {
         NamedNode(Cow::Borrowed(iri))
-    }
-}
-
-impl<'a> Into<Subject<'a>> for NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Named(self)
-    }
-}
-
-impl<'a> Into<Subject<'a>> for &NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Named(self.clone())
-    }
-}
-
-impl<'a> Into<Predicate<'a>> for NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Predicate<'a> {
-        Predicate(self)
-    }
-}
-
-impl<'a> Into<Predicate<'a>> for &NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Predicate<'a> {
-        Predicate(self.clone())
-    }
-}
-
-impl<'a> Into<Object<'a>> for NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Named(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for &NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Named(self.clone())
-    }
-}
-
-impl<'a> Into<Graph<'a>> for NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Graph<'a> {
-        Graph(self)
-    }
-}
-
-impl<'a> Into<Graph<'a>> for &NamedNode<'a> {
-    #[inline]
-    fn into(self) -> Graph<'a> {
-        Graph(self.clone())
-    }
-}
-
-impl<'a> Into<Node<'a>> for NamedNode<'a> {
-    fn into(self) -> Node<'a> {
-        Node::Named(self)
     }
 }
 

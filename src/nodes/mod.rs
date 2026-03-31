@@ -59,6 +59,124 @@ impl<'a> ToStatic for Node<'a> {
     }
 }
 
+impl<'a> From<LiteralNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: LiteralNode<'a>) -> Node<'a> {
+        Node::Literal(value)
+    }
+}
+
+impl<'a> From<&LiteralNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &LiteralNode<'a>) -> Node<'a> {
+        Node::Literal(value.clone())
+    }
+}
+
+impl<'a> From<NamedNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: NamedNode<'a>) -> Node<'a> {
+        Node::Named(value)
+    }
+}
+
+impl<'a> From<&NamedNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &NamedNode<'a>) -> Node<'a> {
+        Node::Named(value.clone())
+    }
+}
+
+impl<'a> From<BlankNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: BlankNode<'a>) -> Node<'a> {
+        Node::Blank(value)
+    }
+}
+
+impl<'a> From<&BlankNode<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &BlankNode<'a>) -> Node<'a> {
+        Node::Blank(value.clone())
+    }
+}
+
+impl<'a> From<Graph<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: Graph<'a>) -> Self {
+        match value {
+            Graph::Blank(b) => Node::Blank(b),
+            Graph::Named(n) => Node::Named(n)
+        }
+    }
+}
+
+impl<'a> From<&Graph<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &Graph<'a>) -> Self {
+        match value {
+            Graph::Blank(b) => Node::Blank(b.clone()),
+            Graph::Named(n) => Node::Named(n.clone())
+        }
+    }
+}
+
+impl<'a> From<Subject<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: Subject<'a>) -> Node<'a> {
+        match value {
+            Subject::Blank(b) => Node::Blank(b),
+            Subject::Named(n) => Node::Named(n)
+        }
+    }
+}
+
+impl<'a> From<&Subject<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &Subject<'a>) -> Node<'a> {
+        match value {
+            Subject::Blank(b) => Node::Blank(b.clone()),
+            Subject::Named(n) => Node::Named(n.clone())
+        }
+    }
+}
+
+impl<'a> From<Predicate<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: Predicate<'a>) -> Node<'a> {
+        Node::Named(value.0)
+    }
+}
+
+impl<'a> From<&Predicate<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &Predicate<'a>) -> Node<'a> {
+        Node::Named(value.0.clone())
+    }
+}
+
+impl<'a> From<Object<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: Object<'a>) -> Node<'a> {
+        match value {
+            Object::Blank(b) => Node::Blank(b),
+            Object::Literal(l) => Node::Literal(l),
+            Object::Named(n) => Node::Named(n)
+        }
+    }
+}
+
+impl<'a> From<&Object<'a>> for Node<'a> {
+    #[inline]
+    fn from(value: &Object<'a>) -> Node<'a> {
+        match value {
+            Object::Blank(b) => Node::Blank(b.clone()),
+            Object::Literal(l) => Node::Literal(l.clone()),
+            Object::Named(n) => Node::Named(n.clone())
+        }
+    }
+}
+
 impl<'a> WriteNQuads for Node<'a> {
     #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {

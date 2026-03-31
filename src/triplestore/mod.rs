@@ -145,10 +145,10 @@ mod tests {
 
         ts.add_triple(
             Triple::new_with_graph(
-                NamedNode::new(owned_graph.clone()).unwrap(),
-                NamedNode::new(owned_resource1.clone()).unwrap(),
-                rdf::Property::Type,
-                owl::Class::Thing
+                NamedNode::new(owned_graph.clone()).unwrap().into(),
+                NamedNode::new(owned_resource1.clone()).unwrap().into(),
+                rdf::Property::Type.into(),
+                owl::Class::Thing.into()
             )
         );
 
@@ -156,9 +156,9 @@ mod tests {
 
         ts.add_triple(
             Triple::new(
-                NamedNode::new(resource2).unwrap(),
-                rdf::Property::Type,
-                aocat::Class::AoIndividualDataResource
+                NamedNode::new(resource2).unwrap().into(),
+                rdf::Property::Type.into(),
+                aocat::Class::AoIndividualDataResource.into()
             )
         );
 
@@ -181,15 +181,15 @@ mod tests {
         let mut ts = TripleStore::new();
 
         ts.add_triple(Triple::new(
-            NamedNode::new("urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36").unwrap(),
-            aocat::Property::WasCreatedOn,
-            DateTimeLiteral::try_from_str("1969-10-12T12:59:30Z").unwrap()
+            NamedNode::new("urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36").unwrap().into(),
+            aocat::Property::WasCreatedOn.into(),
+            DateTimeLiteral::try_from_str("1969-10-12T12:59:30Z").unwrap().into()
         ));
 
         ts.add_triple(Triple::new(
-            BlankNode::new("unknown~node"),
-            rdfs::Property::Label,
-            StringLiteral::new("mon node", Some("fr")).unwrap()
+            BlankNode::new("unknown~node").into(),
+            rdfs::Property::Label.into(),
+            StringLiteral::new("mon node", Some("fr")).unwrap().into()
         ));
 
         let mut buf = vec![];
@@ -214,30 +214,30 @@ mod tests {
         let mut ts = TripleStore::new();
 
         ts.add_triple(Triple::new_with_graph(
-            NamedNode::new(graph).unwrap(),
-            NamedNode::new(graph_subject).unwrap(),
-            rdf::Property::Type,
-            owl::Class::Thing
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            rdf::Property::Type.into(),
+            owl::Class::Thing.into()
         ));
 
         ts.add_triple(Triple::new_with_graph(
-            NamedNode::new(graph).unwrap(),
-            NamedNode::new(graph_subject).unwrap(),
-            owl::Property::OneOf,
-            LiteralNode::new("This Thing")
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            owl::Property::OneOf.into(),
+            LiteralNode::new("This Thing").into()
         ));
 
         ts.add_triple(Triple::new_with_graph(
-            NamedNode::new(graph).unwrap(),
-            NamedNode::new(graph_subject).unwrap(),
-            owl::Property::OneOf,
-            LiteralNode::new("This Other Thing")
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            owl::Property::OneOf.into(),
+            LiteralNode::new("This Other Thing").into()
         ));
 
         ts.add_triple(Triple::new(
-            NamedNode::new(outer_subject).unwrap(),
-            aocat::Property::HasPart,
-            NamedNode::new(graph_subject).unwrap()
+            NamedNode::new(outer_subject).unwrap().into(),
+            aocat::Property::HasPart.into(),
+            NamedNode::new(graph_subject).unwrap().into()
         ));
 
         let mut buf = vec![];

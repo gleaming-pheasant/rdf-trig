@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
 use crate::errors::RdfTrigError;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 use crate::utils::write_escaped_literal;
@@ -53,20 +51,6 @@ impl<'a> StringLiteral<'a> {
     /// Get a `str` slice reference to the `language`.
     pub fn language(&self) -> Option<&str> {
         self.language.as_deref()
-    }
-}
-
-impl<'a> Into<LiteralNode<'a>> for StringLiteral<'a> {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::String(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for StringLiteral<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
     }
 }
 
