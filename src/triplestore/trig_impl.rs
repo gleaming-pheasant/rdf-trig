@@ -7,14 +7,18 @@ use crate::traits::WriteTriG;
 /// A `TriGStore` is a wrapper around offsets to different levels of Node 
 /// for representing data in a `TripleStore` in TriG.
 /// 
-/// It contains offsets to `NodeId`s at Subject, Predicate and Object level, so 
-/// that output can be written without duplicating nodes in full, where the same 
-/// node is being used as the graph, subject, or predicate in a block.
+/// It is built by simultaneously mapping `NodeId`s to new `Vec`s of their type 
+/// (graph, subject, predicate and object) and separate offsets which associate 
+/// a higher-level type to their lower level type (graph-to-subject, 
+/// subject-to-predicate, etc.). Each offset, therefore, will always be relative 
+/// to the `NodeId` for a higher level (`subject_offsets` are how far each new 
+/// subject appears relative to the same index in the `graph_nodes` `Vec`, etc.).
+/// 
+/// See: [data-oriented design](https://en.wikipedia.org/wiki/Data-oriented_design).
 #[derive(Debug)]
 pub(super) struct TriGStore {
     graph_nodes: Vec<Option<NodeId>>, // All existing graph `NodeId`s collected.
     // The location of the subjects in relation to each graph_node.
-    // Think of these as arrays of structs (yay, DOD!).
     subject_offsets: Vec<usize>,
     subject_nodes: Vec<NodeId>,
     predicate_offsets: Vec<usize>,
@@ -115,42 +119,50 @@ impl TriGStore {
             }
 
             // This is a new iteration for every graph, and so the offsets are 
-            // always relative to the index of this graph. Again, think "array 
-            // of structs".
-            for sub_ix in subject_range {
-                let preds_start = self.predicate_offsets[sub_ix];
-                let preds_end = self.predicate_offsets[sub_ix + 1];
+            // always relative to the index of this graph. Think "array of 
+            // structs" (yay, DoD!).
+            for sub_offset in subject_range {
+                let preds_start = self.predicate_offsets[sub_offset];
+                let preds_end = self.predicate_offsets[sub_offset + 1];
                 let pred_count = preds_end - preds_start;
 
                 // Location ix of the actual current subject.
-                let sub_id = self.subject_nodes[sub_ix];
+                let sub_id = self.subject_nodes[sub_offset];
                 let subject_node = node_store.query_node(sub_id);
 
                 subject_node.write_trig(writer)?;
                 writer.write_all(b" ")?;
 
                 for (pred_ix, pred_abs_ix) in (preds_start..preds_end).enumerate() {
-                    let objs_start = self.object_offsets[k];
-                    let objs_end = self.object_offsets[k + 1];
+                    let objs_start = self.object_offsets[pred_abs_ix];
+                    let objs_end = self.object_offsets[pred_abs_ix + 1];
+                    let objs_count = objs_end - objs_start;
 
-                    let pred_id = self.predicate_nodes[k];
+                    let pred_id = self.predicate_nodes[pred_abs_ix];
                     let predicate_node = node_store.query_node(pred_id);
 
                     predicate_node.write_trig(writer)?;
 
                     writer.write_all(b" ")?;
 
-                    for (m_ix, m) in (objs_start..objs_end).enumerate() {
-                        let obj_id = self.object_nodes[m];
+
+                    for (obj_ix, obj_abs_ix) in (objs_start..objs_end).enumerate() {
+                        let obj_id = self.object_nodes[obj_abs_ix];
                         let object_node = node_store.query_node(obj_id);
 
                         object_node.write_trig(writer)?;
-                        writer.write_all(b" . ")?;
+                        
+                        // Not finished with this predicate yet, so comma.
+                        if obj_ix < objs_count - 1 {
+                            writer.write_all(b" , ")?;
+                        }
                     }
-
                     
-                    if k != preds_end - 1 {
+                    if pred_ix < pred_count - 1 {
+                        // Not finished with this subject yet, so semicolon.
                         writer.write_all(b" ; ")?;
+                    } else {
+                        writer.write_all(b" . ")?; // End of preds and objs.
                     }
                 }
             }

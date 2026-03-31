@@ -71,24 +71,6 @@ impl TripleStore {
         self.nodes.query_node(node_id)
     }
 
-    /// Retrieve an `InternedTriple` for the given `InternedTripleId`.
-    fn resolve_interned_triple(
-        &self, triple_id: InternedTripleId
-    ) -> &InternedTriple {
-        self.triples.query_triple(triple_id)
-    }
-
-    /// Retrieve a `TripleView` for the given `InternedTripleId`.
-    /// 
-    /// This function should be used for RDF output formats such as TriG, where 
-    /// the graph index is useful for grouping the output.
-    fn resolve_triple_view_from_interned_id(
-        &self, triple_id: InternedTripleId
-    ) -> TripleView<'_> {
-        let interned_triple = self.triples.query_triple(triple_id);
-        self.resolve_triple_view_from_interned(interned_triple)
-    }
-
     /// Take an `InternedTriple` and turn it into a `TripleView` by resolving 
     /// all of its contained `Node`s.
     fn resolve_triple_view_from_interned(
@@ -264,11 +246,12 @@ mod tests {
         
         assert_eq!(
             trig_string,
+            // Default Graph (None) is always first in `Ord`
             "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . \
+            <https://www.example.com/MyOuterResource> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/has_part> <https://www.example.com/MyResource> . \
             <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> { \
-            <https://www.example.com/MyResource> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> . ; \
-            <http://www.w3.org/2002/07/owl#oneOf> \"This Thing\" , \"This Other Thing\" . } \
-            <https://www.example.com/MyOuterResource> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/has_part> <https://www.example.com/MyResource> ."
+            <https://www.example.com/MyResource> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> ; \
+            <http://www.w3.org/2002/07/owl#oneOf> \"This Thing\" , \"This Other Thing\" . } "
         );
     }
 }
