@@ -37,10 +37,10 @@ impl<'a> Into<Subject<'a>> for NamedNode<'a> {
     }
 }
 
-impl<'a, 'b> Into<Subject<'a>> for &'b NamedNode<'a> {
+impl<'a> Into<Subject<'a>> for &NamedNode<'a> {
     #[inline]
     fn into(self) -> Subject<'a> {
-        Subject::Named(NamedNode(Cow::Owned(self.0.clone().into_owned())))
+        Subject::Named(self.clone())
     }
 }
 
@@ -51,7 +51,7 @@ impl<'a> Into<Predicate<'a>> for NamedNode<'a> {
     }
 }
 
-impl<'a, 'b> Into<Predicate<'a>> for &'b NamedNode<'a> {
+impl<'a> Into<Predicate<'a>> for &NamedNode<'a> {
     #[inline]
     fn into(self) -> Predicate<'a> {
         Predicate(self.clone())
@@ -65,7 +65,7 @@ impl<'a> Into<Object<'a>> for NamedNode<'a> {
     }
 }
 
-impl<'a, 'b> Into<Object<'a>> for &'b NamedNode<'a> {
+impl<'a> Into<Object<'a>> for &NamedNode<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
         Object::Named(self.clone())
@@ -79,7 +79,7 @@ impl<'a> Into<Graph<'a>> for NamedNode<'a> {
     }
 }
 
-impl<'a, 'b> Into<Graph<'a>> for &'b NamedNode<'a> {
+impl<'a> Into<Graph<'a>> for &NamedNode<'a> {
     #[inline]
     fn into(self) -> Graph<'a> {
         Graph(self.clone())
