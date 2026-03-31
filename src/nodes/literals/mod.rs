@@ -13,10 +13,9 @@ pub use string::StringLiteral;
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteNQuads;
 use crate::nodes::Node;
 use crate::nodes::object::Object;
-use crate::traits::{ToStatic, WriteTriG};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 /// A wrapper around the possible options that this crate declares for literal 
 /// nodes (`GYearLiteral`s, `StringLiteral`s, etc). Each specific type - with 
@@ -98,7 +97,7 @@ impl<'a> ToStatic for LiteralNode<'a> {
     }
 }
 
-impl WriteNQuads for LiteralNode<'_> {
+impl<'a> WriteNQuads for LiteralNode<'a> {
     #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
@@ -111,7 +110,7 @@ impl WriteNQuads for LiteralNode<'_> {
     }
 }
 
-impl WriteTriG for LiteralNode<'_> {
+impl<'a> WriteTriG for LiteralNode<'a> {
     #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {

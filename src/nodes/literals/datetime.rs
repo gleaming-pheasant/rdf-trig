@@ -149,7 +149,7 @@ impl<'a> ToStatic for DateTimeLiteral<'a> {
     }
 }
 
-impl WriteNQuads for DateTimeLiteral<'_> {
+impl<'a> WriteNQuads for DateTimeLiteral<'a> {
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         writer.write_all(self.0.as_bytes())?;
@@ -160,7 +160,7 @@ impl WriteNQuads for DateTimeLiteral<'_> {
     }
 }
 
-impl WriteTriG for DateTimeLiteral<'_> {
+impl<'a> WriteTriG for DateTimeLiteral<'a> {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         writer.write_all(self.0.as_bytes())?;

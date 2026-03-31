@@ -8,18 +8,13 @@ Exercise extreme caution if ever developing means that could make these `Id`s
 constructable by any other method, or removable after being interned. */
 pub mod errors;
 pub mod nodes;
-pub(crate) mod traits;
+pub mod traits;
 mod triples;
 mod triplestore;
 pub(crate) mod utils;
 
 pub use triplestore::TripleStore;
-pub use nodes::{
-    BlankNode, BooleanLiteral, DateTimeLiteral, DecimalLiteral, GYearLiteral, 
-    NamedNode, LiteralNode, StringLiteral, named::statics
-};
 pub use triples::Triple;
-pub use traits::WriteNQuads;
 
 use std::hash::BuildHasherDefault;
 use ahash::AHasher;

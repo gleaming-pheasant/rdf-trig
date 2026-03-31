@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteNQuads;
 use crate::nodes::object::Object;
 use crate::nodes::literals::LiteralNode;
 use crate::errors::RdfTrigError;
-use crate::traits::{ToStatic, WriteTriG};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 use crate::utils::write_escaped_literal;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -87,7 +86,7 @@ impl<'a> ToStatic for StringLiteral<'a> {
     }
 }
 
-impl WriteNQuads for StringLiteral<'_> {
+impl<'a> WriteNQuads for StringLiteral<'a> {
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(b"\"")?;
         write_escaped_literal(writer, &self.value)?;
@@ -102,7 +101,7 @@ impl WriteNQuads for StringLiteral<'_> {
     }
 }
 
-impl WriteTriG for StringLiteral<'_> {
+impl<'a> WriteTriG for StringLiteral<'a> {
     #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         // Representation of StringLiterals in TriG and N-Quads is identical.

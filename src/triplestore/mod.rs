@@ -46,8 +46,8 @@ impl TripleStore {
     /// Add all of the `Node`s in the provided `Triple` to this `TripleStore`'s 
     /// `NodeStore`, returning an `InternedTriple` wrapper around the `NodeId` 
     /// for each `Node`.
-    fn intern_triple(
-        &mut self, triple: Triple<'_>
+    fn intern_triple<'a>(
+        &mut self, triple: Triple<'a>
     ) -> InternedTriple {
         let (graph, subject, predicate, object) = triple.into_parts();
 
@@ -62,7 +62,7 @@ impl TripleStore {
     }
 
     /// Add a `Node` to the `NodeStore` of this `TripleStore`.
-    fn intern_node(&mut self, staging_node: Node<'_>) -> NodeId {
+    fn intern_node<'a>(&mut self, staging_node: Node<'a>) -> NodeId {
         self.nodes.intern_node(staging_node)
     }
 
@@ -73,9 +73,9 @@ impl TripleStore {
 
     /// Take an `InternedTriple` and turn it into a `TripleView` by resolving 
     /// all of its contained `Node`s.
-    fn resolve_triple_view_from_interned(
-        &self, interned_triple: &InternedTriple
-    ) -> TripleView<'_> {
+    fn resolve_triple_view_from_interned<'a>(
+        &'a self, interned_triple: &InternedTriple
+    ) -> TripleView<'a> {
         TripleView::new(
             interned_triple.graph()
                 .and_then(|gn_id| Some(self.resolve_node(gn_id))),
@@ -101,7 +101,7 @@ impl TripleStore {
     /// 
     /// Each stored `InternedTriple` is collected from the `triples` 
     /// `InternedTripleStore` and resolved to `Node`s.
-    fn triples_iter(&self) -> impl Iterator<Item = TripleView<'_>> {
+    fn triples_iter<'a>(&'a self) -> impl Iterator<Item = TripleView<'a>> {
         self.triples.iter()
             .map(|it| self.resolve_triple_view_from_interned(it))
     }
@@ -130,8 +130,8 @@ impl WriteTriG for TripleStore {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BlankNode, DateTimeLiteral, LiteralNode, NamedNode, StringLiteral};
-    use crate::statics::{aocat, owl, rdf, rdfs};
+    use crate::nodes::{BlankNode, DateTimeLiteral, LiteralNode, NamedNode, StringLiteral};
+    use crate::nodes::statics::{aocat, owl, rdf, rdfs};
 
     use super::*;
 

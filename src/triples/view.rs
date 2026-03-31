@@ -26,7 +26,7 @@ impl<'a> TripleView<'a> {
     }
 }
 
-impl WriteNQuads for TripleView<'_> {
+impl<'a> WriteNQuads for TripleView<'a> {
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         self.subject.write_nquads(writer)?;
         writer.write_all(b" ")?;

@@ -46,14 +46,14 @@ impl<'a> Into<Subject<'a>> for BlankNode<'a> {
 impl<'a> Into<Object<'a>> for &'a BlankNode<'a> {
     #[inline]
     fn into(self) -> Object<'a> {
-        Object::Blank(self.clone())
+        Object::Blank(BlankNode(Cow::Borrowed(&self.0)))
     }
 }
 
 impl<'a> Into<Subject<'a>> for &'a BlankNode<'a> {
     #[inline]
     fn into(self) -> Subject<'a> {
-        Subject::Blank(self.clone())
+        Subject::Blank(BlankNode(Cow::Borrowed(&self.0)))
     }
 }
 
@@ -72,7 +72,7 @@ impl<'a> ToStatic for BlankNode<'a> {
     }
 }
 
-impl WriteNQuads for BlankNode<'_> {
+impl<'a> WriteNQuads for BlankNode<'a> {
     #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
        writer.write_all(b"_:")?;
@@ -82,7 +82,7 @@ impl WriteNQuads for BlankNode<'_> {
     }
 }
 
-impl WriteTriG for BlankNode<'_> {
+impl<'a> WriteTriG for BlankNode<'a> {
     #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
        // Identical representation in both TriG and N-Quads

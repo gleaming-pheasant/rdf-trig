@@ -18,7 +18,9 @@ mod store;
 
 pub use blank::BlankNode;
 pub use graph::Graph;
-pub use named::NamedNode;
+pub use named::{
+    NamedNode, statics
+};
 pub use literals::{
     BooleanLiteral,
     DecimalLiteral,
@@ -57,7 +59,7 @@ impl<'a> ToStatic for Node<'a> {
     }
 }
 
-impl WriteNQuads for Node<'_> {
+impl<'a> WriteNQuads for Node<'a> {
     #[inline]
     fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
@@ -68,7 +70,7 @@ impl WriteNQuads for Node<'_> {
     }
 }
 
-impl WriteTriG for Node<'_> {
+impl<'a> WriteTriG for Node<'a> {
     #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
