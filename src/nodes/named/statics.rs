@@ -156,6 +156,7 @@ define_ontology!(aocat, "https://www.ariadne-infrastructure.eu/resource/ao/cat/1
         HasLandingPage => "has_landing_page", 
         IsLandingPageOf => "is_landing_page_of",
         HasAccessPolicy => "has_access_policy",
+        HasAccessRights => "has_access_rights",
         IsAccessPolicyOf => "is_access_policy_of"
     },
     Classes {
