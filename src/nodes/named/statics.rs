@@ -114,6 +114,7 @@ macro_rules! define_ontology {
 
 define_ontology!(aocat, "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/",
     Properties {
+        HasCountry => "has_country",
         HasSpatialCoverage => "has_spatial_coverage",
         HasIdentifier => "has_identifier",
         HasType => "has_type",
