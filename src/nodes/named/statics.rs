@@ -114,6 +114,13 @@ macro_rules! define_ontology {
 
 define_ontology!(aocat, "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/",
     Properties {
+        HasBoundingBoxMinLat => "has_bounding_box_min_lat",
+        HasBoundingBoxMinLon => "has_bounding_box_min_lon",
+        HasBoundingBoxMaxLat => "has_bounding_box_max_lat",
+        HasBoundingBoxMaxLon => "has_bounding_box_max_lon",
+        HasLatitude => "has_latitude",
+        HasLongitude => "has_longitude",
+        HasPolygonalRepresentation => "has_polygonal_representation",
         HasNativePeriod => "has_native_period",
         From => "from",
         Until => "until",
