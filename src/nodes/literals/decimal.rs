@@ -1,4 +1,3 @@
-use core::f32;
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
@@ -8,10 +7,14 @@ use crate::traits::{WriteNQuads, WriteTriG};
 
 const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal>";
 
-/// A wrapper around an [`f32`], which can be constructed either with a 
-/// native `f32`, or with a string which can be parsed as one.
+/// A wrapper around an [`f64`], which can be constructed either with a 
+/// native `f64`, or with a string which can be parsed as one.
+/// 
+/// Techincally this is invalid, a Rust `f64` should translate to an XSD 
+/// "double", but this is not commonly used. It is hoped receiving parsers can 
+/// handle/truncate long `f64` values.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DecimalLiteral(f32);
+pub struct DecimalLiteral(f64);
 
 impl Eq for DecimalLiteral {}
 
@@ -20,7 +23,7 @@ impl Hash for DecimalLiteral {
         let canonical = self.0 + 0.0;
 
         let bits = if canonical.is_nan() {
-            0x7fc00000u32
+            0x7fc00000f64
         } else {
             canonical.to_bits()
         };
@@ -36,7 +39,7 @@ impl DecimalLiteral {
     -> Result<DecimalLiteral, RdfTrigError> {
         let value = value.into();
         
-        if let Ok(decimal) = value.parse::<f32>() {
+        if let Ok(decimal) = value.parse::<f64>() {
             Ok(DecimalLiteral(decimal))
         } else {
             Err(RdfTrigError::InvalidDecimal(value.to_string()))
@@ -44,9 +47,9 @@ impl DecimalLiteral {
     }
 }
 
-impl From<f32> for DecimalLiteral {
+impl From<f64> for DecimalLiteral {
     #[inline]
-    fn from(value: f32) -> Self {
+    fn from(value: f64) -> Self {
         DecimalLiteral(value)
     }
 }

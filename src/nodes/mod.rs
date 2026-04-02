@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_decimal_from_native_write_nquads() {
-        let decimal_literal = DecimalLiteral::from(69.420f32);
+        let decimal_literal = DecimalLiteral::from(69.420f64);
 
         let mut buf = vec![];
         decimal_literal.write_nquads(&mut buf).unwrap();
