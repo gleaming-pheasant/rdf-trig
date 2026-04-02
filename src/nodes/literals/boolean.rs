@@ -1,8 +1,10 @@
 use std::borrow::Cow;
-use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
 use crate::traits::{WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
+use crate::impl_write_sync_and_async;
 
 // Unfortunately these can't be concat!-ed to a single static string from consts.
 const XSD_BOOLEAN_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#boolean>";
@@ -53,19 +55,23 @@ impl TryFrom<u8> for BooleanLiteral {
     }
 }
 
-impl WriteNQuads for BooleanLiteral {
-    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"\"")?;
-        writer.write_all(self.0.to_string().as_bytes())?;
-        writer.write_all(b"\"^^")?;
-        writer.write_all(XSD_BOOLEAN_IRI.as_bytes())?;
-        Ok(())
-    }
-}
+impl_write_sync_and_async!(
+    BooleanLiteral, this,
+    WriteNQuads, write_nquads,
+    WriteNQuadsAsync, write_nquads_async,
+    [
+        b"\"" ,
+        this.0.to_string().as_bytes(),
+        b"\"^^",
+        XSD_BOOLEAN_IRI.as_bytes()
+    ]
+);
 
-impl WriteTriG for BooleanLiteral {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(self.0.to_string().as_bytes())?;
-        Ok(())
-    }
-}
+impl_write_sync_and_async!(
+    BooleanLiteral, this,
+    WriteTriG, write_trig,
+    WriteTriGAsync, write_trig_async,
+    [
+        this.0.to_string().as_bytes()
+    ]
+);

@@ -2,6 +2,8 @@
 //! 
 //! These function focus mainly on escaping strings for 
 //! [`crate::traits::WriteTriG`] implementations.
+pub mod macros;
+
 use std::io::{Result as IoResult, Write};
 
 const LITERAL_ESCAPE_SYMBOLS: [u8; 256] = {
