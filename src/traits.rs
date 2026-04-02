@@ -2,8 +2,6 @@ use std::io::{self, Write};
 
 #[cfg(feature = "tokio")]
 use tokio::io::AsyncWrite;
-#[cfg(feature = "tokio")]
-use core::task::Poll;
 
 /// An implementation of [`Write`] which writes in the 
 /// [N-Quads](https://www.w3.org/TR/n-quads/) format.
@@ -78,7 +76,9 @@ pub(crate) trait ToStatic {
 /// and don't care about the presence or order of graphs or other named nodes.
 pub trait WriteNQuadsAsync {
     /// Write self to the provided writer in N-Quads format.
-    fn write_nquads_async<W: AsyncWrite>(&self, writer: &mut W) -> Poll<io::Result<()>>;
+    fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send;
 }
 
 #[cfg(feature = "tokio")]
@@ -90,7 +90,10 @@ pub trait WriteNQuadsAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
     #[inline]
-    fn write_nquads_async<W: AsyncWrite>(&self, writer: &mut W) -> Poll<io::Result<()>> {
+    fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send
+    {
         (**self).write_nquads_async(writer)
     }
 }
@@ -108,7 +111,9 @@ impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
 /// expect XSD type declarations.
 pub trait WriteTriGAsync {
     /// Write self to the provided writer in TriG format.
-    fn write_trig_async<W: AsyncWrite>(&self, writer: &mut W) -> Poll<io::Result<()>>;
+    fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send;
 }
 
 #[cfg(feature = "tokio")]
@@ -120,7 +125,10 @@ pub trait WriteTriGAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteTriGAsync + ?Sized> WriteTriGAsync for &'a T {
     #[inline]
-    fn write_trig_async<W: AsyncWrite>(&self, writer: &mut W) -> Poll<io::Result<()>> {
+    fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: AsyncWrite + Unpin + Send
+    {
         (**self).write_trig_async(writer)
     }
 }
