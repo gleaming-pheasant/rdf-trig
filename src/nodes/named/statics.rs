@@ -174,7 +174,7 @@ define_ontology!(aocat, "https://www.ariadne-infrastructure.eu/resource/ao/cat/1
         AoCollection => "AO_Collection",
         AoDigitalImage => "AO_Digital_Image",
         AoDigitalMedia => "AO_Digital_Media",
-        AoConcept => "AO_Dimension",
+        AoConcept => "AO_Concept",
         AoDataResource => "AO_Data_Resource",
         AoDocument => "AO_Document",
         AoEntity => "AO_Entity",
