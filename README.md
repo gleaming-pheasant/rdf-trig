@@ -124,6 +124,14 @@ assert_eq!(
 );
 ```
 
+## Feature Flags
+ - `tokio`: Enables async versions of `WriteTriG` (`WriteTriGAsync`) and 
+ `WriteNQuads` (`WriteNQuadsAsync`) utilising `tokio::AsyncWrite`,
+ - `chrono`: Allows creation of `DateTimeLiteral`s from `chrono::DateTime<_>` 
+ types,
+ - `time`: Allows creation of `DateTimeLiteral`s from `time::OffsetDateTime` and 
+ `time::PrimitiveDateTime` types.
+
 ## A Note on Accepted Values
 ### *All Escaped Values*
 For the purposes of speed (and given this crate's limited functionality), no 
