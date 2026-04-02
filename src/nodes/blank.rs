@@ -1,19 +1,10 @@
 /// A `BlankNode` is a standard RDF blank node. It serves as a a place to store 
 /// known facts about a resource within a graph, without knowing the resource's 
 /// specific IRI.
-/// 
-/// `BlankNode` directly implements [`WriteTriG`], prefixing the provided id 
-/// with the standard blank node "_:" prefix.
-/// 
-/// `BlankNode`s cannot be initialised directly, and must be generated as part 
-/// of [`Subject`] or [`Object`] constructors.
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::nodes::StagingNode;
-use crate::nodes::subject::Subject;
-use crate::nodes::object::Object;
-use crate::traits::{ToStatic, WriteTriG};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 
@@ -35,34 +26,6 @@ impl<'a> BlankNode<'a> {
     }
 }
 
-impl<'a> Into<Object<'a>> for BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Blank(self)
-    }
-}
-
-impl<'a> Into<Subject<'a>> for BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Blank(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for &'a BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Blank(self.clone())
-    }
-}
-
-impl<'a> Into<Subject<'a>> for &'a BlankNode<'a> {
-    #[inline]
-    fn into(self) -> Subject<'a> {
-        Subject::Blank(self.clone())
-    }
-}
-
 impl<'a> ToStatic for BlankNode<'a> {
     type StaticType = BlankNode<'static>;
 
@@ -72,22 +35,20 @@ impl<'a> ToStatic for BlankNode<'a> {
     }
 }
 
-// #[derive(Debug, Eq, Hash, PartialEq)]
-// pub(crate) struct InternedBlankNode(pub BlankNode<'static>);
-
-impl<'a> Into<StagingNode<'a>> for BlankNode<'a> {
-    /// Wrap this `BlankNode` as a `StagedNode` in preparation for interning.
+impl<'a> WriteNQuads for BlankNode<'a> {
     #[inline]
-    fn into(self) -> StagingNode<'a> {
-        StagingNode::Blank(self)
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+       writer.write_all(b"_:")?;
+        write_escaped_local_name(writer, &self.0)?;
+
+        Ok(()) 
     }
 }
 
-impl WriteTriG for BlankNode<'_> {
+impl<'a> WriteTriG for BlankNode<'a> {
+    #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"_:")?;
-        write_escaped_local_name(writer, &self.0)?;
-
-        Ok(())
+       // Identical representation in both TriG and N-Quads
+       self.write_nquads(writer)
     }
 }

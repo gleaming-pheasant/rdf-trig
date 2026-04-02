@@ -1,22 +1,43 @@
-use crate::namespaces::store::NamespaceStore;
-use crate::nodes::{IriNode, StagingNode};
+use crate::nodes::{BlankNode, NamedNode};
 use crate::traits::ToStatic;
 
-/// A wrapper around an [`IriNode`] which can optionally be used in a 
-/// [`Triple`](crate::triples::Triple).
-/// 
-/// This can only be constructed by using the [`Into<Graph>`] implementation for 
-/// and `IriNode`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Graph<'a>(pub(crate) IriNode<'a>);
+pub enum Graph<'a> {
+    Blank(BlankNode<'a>),
+    Named(NamedNode<'a>)
+}
 
-impl<'a> Graph<'a> {
-    /// Convert this `Graph` into a [`StagingNode`], using the provided 
-    /// [`NamepaceStore`] to intern the `Namespace`.
-    pub(crate) fn into_staging_node(
-        self, namespace_store: &mut NamespaceStore
-    ) -> StagingNode<'a> {
-        self.0.into_staging(namespace_store)
+impl<'a> From<&Graph<'a>> for Graph<'a> {
+    fn from(p: &Graph<'a>) -> Self {
+        p.clone()
+    }
+}
+
+impl<'a> From<BlankNode<'a>> for Graph<'a> {
+    #[inline]
+    fn from(value: BlankNode<'a>) -> Graph<'a> {
+        Graph::Blank(value)
+    }
+}
+
+impl<'a> From<&BlankNode<'a>> for Graph<'a> {
+    #[inline]
+    fn from(value: &BlankNode<'a>) -> Graph<'a> {
+        Graph::Blank(value.clone())
+    }
+}
+
+impl<'a> From<NamedNode<'a>> for Graph<'a> {
+    #[inline]
+    fn from(value: NamedNode<'a>) -> Graph<'a> {
+        Graph::Named(value)
+    }
+}
+
+impl<'a> From<&NamedNode<'a>> for Graph<'a> {
+    #[inline]
+    fn from(value: &NamedNode<'a>) -> Graph<'a> {
+        Graph::Named(value.clone())
     }
 }
 
@@ -25,6 +46,9 @@ impl<'a> ToStatic for Graph<'a> {
 
     #[inline]
     fn to_static(&self) -> Self::StaticType {
-        Graph(self.0.to_static())
+        match self {
+            Graph::Blank(b) => Graph::Blank(b.to_static()),
+            Graph::Named(n) => Graph::Named(n.to_static())
+        }
     }
 }

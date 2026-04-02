@@ -1,28 +1,20 @@
 #![doc = include_str!("../README.md")]
-/* NOTE: This crate uses `.unwrap()` quite a lot when querying interned data. It 
-will query an IndexSet (or FastIndexSet), with an objects `...Id(u32)` type. 
-Unwrap is called because - except within this crate directly - it is currently 
-impossible for these `...Id` types to be created without a corresponding index 
-in a `TripleStore` field.
+/* NOTE: This crate uses `.unwrap()` when querying interned data. It will query 
+IndexSets, with a `NodeId` or `TripleId`. Unwrap is called because it is 
+currently impossible for these `Id` types to be created externally without a 
+guarantee that the `Id` corresponds to an interned item.
 
-Exercise extreme caution if ever developing means that could make these `...Id`s 
-constructable by any other method. */
+Exercise extreme caution if ever developing means that could make these `Id`s 
+constructable by any other method, or removable after being interned. */
 pub mod errors;
-pub mod namespaces;
 pub mod nodes;
-pub(crate) mod traits;
+pub mod traits;
 mod triples;
 mod triplestore;
 pub(crate) mod utils;
 
 pub use triplestore::TripleStore;
-pub use namespaces::Namespace;
-pub use nodes::{
-    BlankNode, BooleanLiteral, DateTimeLiteral, DecimalLiteral, GYearLiteral, 
-    IriNode, LangStringLiteral, LiteralNode
-};
 pub use triples::Triple;
-pub use traits::WriteTriG;
 
 use std::hash::BuildHasherDefault;
 use ahash::AHasher;

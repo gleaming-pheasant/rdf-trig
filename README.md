@@ -1,82 +1,127 @@
 # rdf-trig
-A crate for quick formatting of RDF triples in 
-[TriG](https://en.wikipedia.org/wiki/TriG_(syntax)) from Rust native types.
+A crate for quick formatting of RDF triples in [N-Quads](https://www.w3.org/TR/n-quads/)
+and [TriG](https://www.w3.org/TR/trig/) from Rust native types.
 
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
-for adding to a `TripleStore`. It also provides traits for writing the 
-`TripleStore` and individual elements to TriG on any `impl std::io::Write`.
+for adding to a `TripleStore`. It also provides traits for writing the entire 
+`TripleStore` and/or any individual elements to TriG on any 
+`impl std::io::Write`.
 
 The main impetus of this crate is speed. It uses types and methods explicitly 
 for reading and writing types with as little reallocation or copying as 
 possible.
 
+__Warning__ This crate is pre-stable release. All releases (regardless of minor 
+or major), will probably have breaking changes.
+
+## `TriG` or `N-Quads`
+When writing RDF triples, there is always a dilemma between choosing long 
+strings/excessive memory consumption, and excessive CPU usage. IRIs are long and 
+common, but shortening them takes a lot of parsing...
+ - Use `N-Quads` when you want to preserve CPU and care less about buffer and 
+ output sizes. `N-Quads` prints every triple/quad in full but does so quickly.
+ - Use `TriG` when buffer/output size is more of a concern. This implementation 
+ of `TriG` groups triples so that reused graphs/subjects/predicates are only 
+ output once. But, creating and sorting these groups is expensive.
+    - To assist with this trade-off, this implemention of `TriG` only (and 
+    automatically) prefixes the XML Schema (`xsd`). All other IRIs are still 
+    output in full.
+
 ## Usage Examples
-### Add Multiple Triples to a Graph
+### Write `N-Quads`
 ```rust
-use rdf_trig::{
-    IriNode, LangStringLiteral, Namespace, TripleStore, Triple, WriteTriG
-};
-use rdf_trig::namespaces::statics::OWL;
-use rdf_trig::nodes::predicate::RDF_TYPE;
+use rdf_trig::{Triple, TripleStore};
+use rdf_trig::nodes::{DateTimeLiteral, NamedNode, StringLiteral};
+use rdf_trig::nodes::statics::{aocat, owl, rdf, rdfs};
+use rdf_trig::traits::WriteNQuads;
 
-let mut store = TripleStore::new();
+// Create the master 
+let mut ts = TripleStore::new();
 
-let my_schema = Namespace::new("schema", "http://www.example.com/ontology#")
+let subject_iri = "urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36";
+
+ts.add_triple(Triple::new(
+    // Cloning existing Nodes only clones references to contained strings.
+    NamedNode::new(subject_iri).unwrap().into(),
+    rdf::Property::Type.into(),
+    owl::Class::Thing.into()
+));
+
+ts.add_triple(Triple::new(
+    NamedNode::new(subject_iri).unwrap().into(),
+    rdfs::Property::Label.into(),
+    // Only 2- or 3-digit ASCII alpha language codes are allowed.
+    StringLiteral::new("L'étiquette de ma ressource", Some("fr")).unwrap().into()
+));
+
+ts.add_triple(Triple::new_with_graph(
+    // Add a Graph
+    NamedNode::new("https://www.example.com/MyGraph").unwrap().into(),
+    NamedNode::new(subject_iri).unwrap().into(),
+    aocat::Property::WasCreatedOn.into(),
+    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap().into()
+));
+
+// Write... traits implement Write, so we need to write to a Vec<u8> and parse.
+let mut buf = vec![];
+ts.write_nquads(&mut buf).unwrap();
+let nquads_string = String::from_utf8(buf).unwrap();
+
+// N-Quads prints the repeated resource in full, and the xsd type in full.
+// The `TripleStore` still interns the `NamedNode` only once.
+assert_eq!(
+    nquads_string,
+    "<urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> .\n\
+    <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <http://www.w3.org/2000/01/rdf-schema#label> \"L\\'étiquette de ma ressource\"@fr .\n\
+    <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/was_created_on> \"1969-12-13T12:59:30Z\"^^<http://www.w3.org/2001/XMLSchema#dateTime> <https://www.example.com/MyGraph> .\n"
+);
+```
+
+### Write `TriG`
+```rust
+use rdf_trig::{Triple, TripleStore};
+use rdf_trig::nodes::{DateTimeLiteral, NamedNode, StringLiteral};
+use rdf_trig::nodes::statics::{aocat, owl, rdf, skos};
+use rdf_trig::traits::WriteTriG;
+
+// Create the master 
+let mut ts = TripleStore::new();
+
+let graph_iri = "https://www.example.com/MyGraph";
+let subject = NamedNode::new("urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36")
     .unwrap();
 
-let my_objects = Namespace::new("nodes", "http://www.example.com/")
-    .unwrap();
+ts.add_triple(Triple::new_with_graph(
+    NamedNode::new(graph_iri).unwrap().into(),
+    (&subject).into(),
+    rdf::Property::Type.into(),
+    owl::Class::Thing.into()
+));
 
-let graph = IriNode::new(&my_objects, "MyGraph");
+ts.add_triple(Triple::new_with_graph(
+    NamedNode::new(graph_iri).unwrap().into(),
+    (&subject).into(),
+    skos::Property::PrefLabel.into(),
+    StringLiteral::new_en("My resource's label").into() // English language
+));
 
-// Using a reference to graph uses Clone internally, but as all str values are 
-// Cows, and no allocation is done except on first insertion of a value into the 
-// TripleStore, this overhead is virtually free.
-let type_triple = Triple::new_with_graph(
-    &graph,
-    IriNode::new(&my_objects, "Object123"),
-    RDF_TYPE,
-    IriNode::new(OWL, "Thing")
-);
-
-store.add_triple(type_triple);
-
-let label_triple = Triple::new_with_graph(
-    &graph,
-    IriNode::new(&my_objects, "Object123"),
-    IriNode::new(my_schema, "hasCustomLabel"),
-    LangStringLiteral::new("is a Thing", "en").unwrap()
-);
-
-store.add_triple(label_triple);
+ts.add_triple(Triple::new(
+    // Using the same subject, but without a Graph.
+    (&subject).into(),
+    aocat::Property::WasCreatedOn.into(),
+    DateTimeLiteral::try_from_str("1969-12-13T12:59:30Z").unwrap().into()
+));
 
 let mut buf = vec![];
+ts.write_trig(&mut buf).unwrap();
+let trig_string = String::from_utf8(buf).unwrap();
 
-store.write_trig(&mut buf).unwrap();
-
-let string_output = String::from_utf8(buf).unwrap();
-
-// There is no guarantee of the output order here, hence .contains() rather than 
-// assert_eq!().
-assert!(string_output.contains(
-    "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
-));
-assert!(string_output.contains(
-    "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
-));
-assert!(string_output.contains(
-    "@prefix schema: <http://www.example.com/ontology#> .\n"
-));
-assert!(string_output.contains(
-    "<http://www.example.com/MyGraph> {"
-));
-assert!(string_output.contains(
-    "nodes:Object123 a owl:Thing ."
-));
-assert!(string_output.contains(
-    "nodes:Object123 schema:hasCustomLabel \"is a Thing\"@en ."
-));
-
+// TriG has a smaller output, but costs to sort the input in order to generate 
+// the output.
+assert_eq!(
+    trig_string,
+    "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/was_created_on> \"1969-12-13T12:59:30Z\"^^xsd:dateTime . <https://www.example.com/MyGraph> { <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> ; <http://www.w3.org/2004/02/skos/core#prefLabel> \"My resource\\'s label\"@en . } "
+);
 ```
 
 ## A Note on Accepted Values
@@ -87,13 +132,13 @@ whitespace, or characters in need of escaping, etc.
 
 Rather than rejecting these inputs and creating a bottleneck, the crate simply 
 escapes - and in some cases refuses to write - characters in the TriG output. 
-For instance, a local name (such as a prefix) declared with a line break (\r\n 
-or \n), will be accepted, but the line break will simply be removed on the 
-output.
+For instance, a local name (generally a blank node's label) declared with a line 
+break (\r\n or \n), will be accepted, but the line break will simply be removed 
+on output to `N-Quads` or `TriG`.
 
-__But, the escape sequences are also not completely valid!__ The crate doesn't 
-exclude some of the random characters that the TriG specification excludes, 
-such as this exclusion of the multiplication sign:
+__Warning: The escape sequences are also not completely valid!__ The crate 
+doesn't exclude some of the random characters that the TriG specification 
+excludes, such as this exclusion of the multiplication sign:
 
  > [#0370-#037D] | [#037F-#1FFF]
 
@@ -120,20 +165,19 @@ etc. are where they should. Using an example from the
 > http://a.example/foo-bar. A term written as ex:%66oo-bar with a prefix @prefix 
 > ex: <http://a.example/> also designates the IRI http://a.example/%66oo-bar.
 
-Therefore, the only verification that this crate does is on namespace IRIs 
-(the base IRI, and not any local names). Once those are verified, any appended 
-local_names are simply trusted to be in a valid format. This crate only assumes 
-that if a local name as a [PLX](https://www.w3.org/TR/trig/#grammar-production-PLX) 
-would need any characters escaping, the full escaped URL should be output (e.g. 
-`<https://www.example.com/Not%20Valid%20PLX>`).
+Therefore, the crate doesn't automaticaly escape non-ASCII characters or 
+whitespace. Instead, it keeps international UTF-8 characters in their original 
+format (using the [`fluent_uri` crate](https://github.com/yescallop/fluent-uri-rs), 
+not converting to Punycode like other crates and browsers do). Otherwise it 
+simply validates IRIs in `NamedNode`s and provides no character encoding.
 
 ### *gYears*
-To align with common practices - but, ironically, not the XML Schema - this 
-crate does not output valid `xsd:gYear`s. As with most modern software - 
-including GraphDB which accepts gYears in this format - a year is taken as 
-entered. The [XML Schema](https://www.w3.org/TR/xmlschema11-2/#gYear) specifies 
-that a year shorter than 4 digits is pre-padded with zeroes (e.g. the year 
-"*123*" should become "*0123*"). The less said about this the better.
+To align with common practices - but not the XML Schema - this crate does not 
+output valid `xsd:gYear`s. As with most modern software - including GraphDB 
+which accepts gYears in this format - a year is taken as entered. The 
+[XML Schema](https://www.w3.org/TR/xmlschema11-2/#gYear) specifies that a year 
+shorter than 4 digits is pre-padded with zeroes (e.g. the year "*123*" should 
+become "*0123*"). The less said about this the better.
 
 This crate also doesn't allow storage of timezone offsets with gYears. Again, 
 purely for speed and practicality.
@@ -149,27 +193,10 @@ This index is converted to a `u32` to be more cache friendly on 64-bit systems,
 but be warned, any collection with a quantity greater than maximum `u32` max 
 (4,294,967,295) will cause applications to panic.
 
-The crate also appends numbers to `Namespace` prefixes if you've used the same 
-`prefix` for two different `iri`s. The limit for "suffixed prefixes" is the 
-`u8` maximum (255). Exceeding this number of duplicated prefixes will cause 
-applications to panic.
-
-E.g. declaring *"owl"* as the prefix for both *"http://www.w3.org/2002/07/owl#"* 
-and *"http://www.w3.org/2002/07/owl"* (anchor removed) will provide prefixes of 
-*"owl"* and *"owl0"* respectively.
-
-If you've messed up, and you're declaring each local name as its own namespace 
-with a shared prefix, this crate will panic!
-
 ### So many Ids...
 On that note... this crate may seem overkill initially. Interning every element 
-has added a lot of boilerplate to the source code. However, this hasn't been 
-done to gain minor performance wins, it has been done out of necessity.
-
-A graph will have its own namespace, a node (if it is IRI) will have its own 
-namespace. In order to limit the repeated declaration of some very lengthy IRIs, 
-you already have to intern each graph's namespace in the same master store as 
-each IRIs namespace (whether the node is related to a graph or not).
+has added a lot of boilerplate to the source code. This hasn't been done to gain 
+performance wins.
 
 Given RDF's propensity to use a very small number of namespaces a very large 
 number of times, it makes sense to use statics and intern everything in order to 
@@ -186,19 +213,17 @@ in place of dynamically defined `String`s, and dynamically defined nodes which
 are used repeatedly in different `Triple`s can be shared.
 
 As all values are interned, any newly encountered `&'a str` references are 
-elided to `String`s for permanent storage, but then references can simply be 
-dismissed if a `&'a str` or `String` is encountered.
+elided to owned `Cow`s for permanent storage, but references are simply 
+dismissed if an existing `Deref<Target = str>` is encountered.
 
-RDF isn't actually "machine understandable", so hardcoding namespaces and iris 
-is very common practice (see 
-[RDF4J](https://rdf4j.org/documentation/tutorials/getting-started/)). This crate 
-even provides many `const` namespaces out of the box to assist with this (dcterms, 
-foaf, owl, rdf, rdfs, skos, etc.). If you use any of these, it makes sense to 
-stick with the `Cow`s.
+RDF isn't actually "machine understandable", so hardcoding namespaces and IRIs 
+is very common practice (see RDF4J and ResearchSpace as core examples). This 
+crate even provides many `const` namespaces out of the box to assist with this 
+(owl, rdf, rdfs, etc.). If you use any of these, it makes sense to stick with 
+the `Cow`s.
 
-If, however, you are dynamically defining all - or most - nodes and their 
-namespaces, do not use this crate; the overhead of using `Cow` would be 
-wasteful.
+If, however, you are dynamically defining all - or most - nodes, do not use this 
+crate; the overhead of using `Cow` would be wasteful.
 
 ## Not Suitable for Broadcast
 To assist in speed, this crate implements the 

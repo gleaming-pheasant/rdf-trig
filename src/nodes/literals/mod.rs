@@ -8,16 +8,12 @@ pub use boolean::BooleanLiteral;
 pub use datetime::DateTimeLiteral;
 pub use decimal::DecimalLiteral;
 pub use gyear::GYearLiteral;
-pub use string::LangStringLiteral;
+pub use string::StringLiteral;
 
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use crate::WriteTriG;
-use crate::nodes::object::Object;
-use crate::nodes::StagingNode;
-use crate::traits::ToStatic;
-use crate::utils::write_escaped_literal;
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
 
 /// A wrapper around the possible options that this crate declares for literal 
 /// nodes (`GYearLiteral`s, `StringLiteral`s, etc). Each specific type - with 
@@ -29,53 +25,67 @@ pub enum LiteralNode<'a> {
     DateTime(DateTimeLiteral<'a>),
     Decimal(DecimalLiteral),
     GYear(GYearLiteral),
-    LangString(LangStringLiteral<'a>),
-    String(Cow<'a, str>)
+    String(StringLiteral<'a>)
 }
 
 impl<'a> LiteralNode<'a> {
-    /// Create a new `LiteralNode::String` with the provided `str`.
+    /// Create a new `LiteralNode::String` with the provided 
+    /// `Into<Cow<'a, str>>`.
+    /// 
+    /// Does not define the language for the contained `StringLiteral`.
     /// 
     /// Can be used as a placeholder for any literal where the recieving graph 
     /// has no interest in/performs no calculations on the data type.
     pub fn new<C: Into<Cow<'a, str>>>(value: C) -> LiteralNode<'a> {
-        LiteralNode::String(value.into())
+        LiteralNode::String(
+            StringLiteral::new(value.into(), None::<Cow<'a, str>>)
+                .unwrap() // Safe because new() only fails where language is Some
+        )
     }
 }
 
-impl<'a> Into<LiteralNode<'a>> for Cow<'a, str> {
+impl<'a> From<BooleanLiteral> for LiteralNode<'a> {
     #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::String(self)
+    fn from(value: BooleanLiteral) -> LiteralNode<'a> {
+        LiteralNode::Boolean(value)
     }
 }
 
-impl<'a> Into<Object<'a>> for Cow<'a, str> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
+impl<'a> From<DateTimeLiteral<'a>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: DateTimeLiteral<'a>) -> LiteralNode<'a> {
+        LiteralNode::DateTime(value)
     }
 }
 
-impl<'a> Into<Object<'a>> for LiteralNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self)
+impl<'a> From<DecimalLiteral> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: DecimalLiteral) -> LiteralNode<'a> {
+        LiteralNode::Decimal(value)
     }
 }
 
-impl<'a> Into<Object<'a>> for &'a LiteralNode<'a> {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.clone())
+impl<'a> From<GYearLiteral> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: GYearLiteral) -> LiteralNode<'a> {
+        LiteralNode::GYear(value)
     }
 }
 
-impl<'a> Into<StagingNode<'a>> for LiteralNode<'a> {
-    /// Wrap this `LiteralNode` as a `StagedNode` in preparation for interning.
-    #[inline]
-    fn into(self) -> StagingNode<'a> {
-        StagingNode::Literal(self)
+impl<'a> From<StringLiteral<'a>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: StringLiteral<'a>) -> LiteralNode<'a> {
+        LiteralNode::String(value)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for LiteralNode<'a> {
+    #[inline(always)]
+    fn from(value: Cow<'a, str>) -> LiteralNode<'a> {
+        LiteralNode::String(
+            StringLiteral::new(value, None::<Cow<'a,str>>)
+                .unwrap() // Safe - see `LiteralNode::new()`
+        )
     }
 }
 
@@ -88,29 +98,33 @@ impl<'a> ToStatic for LiteralNode<'a> {
             LiteralNode::DateTime(dtl) => LiteralNode::DateTime(dtl.to_static()),
             LiteralNode::Decimal(dec) => LiteralNode::Decimal(*dec),
             LiteralNode::GYear(int) => LiteralNode::GYear(*int),
-            LiteralNode::LangString(ls) => LiteralNode::LangString(ls.to_static()),
-            LiteralNode::String(s) => {
-                LiteralNode::String(Cow::Owned(s.clone().into_owned()))
-            }
+            LiteralNode::String(ls) => LiteralNode::String(ls.to_static())
+        }
+    }
+}
+
+impl<'a> WriteNQuads for LiteralNode<'a> {
+    #[inline]
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        match self {
+            LiteralNode::Boolean(bool) => bool.write_nquads(writer),
+            LiteralNode::DateTime(dt) => dt.write_nquads(writer),
+            LiteralNode::Decimal(dec) => dec.write_nquads(writer),
+            LiteralNode::GYear(gy) => gy.write_nquads(writer),
+            LiteralNode::String(ls) => ls.write_nquads(writer)
         }
     }
 }
 
 impl<'a> WriteTriG for LiteralNode<'a> {
+    #[inline]
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         match self {
             LiteralNode::Boolean(bool) => bool.write_trig(writer),
             LiteralNode::DateTime(dt) => dt.write_trig(writer),
             LiteralNode::Decimal(dec) => dec.write_trig(writer),
             LiteralNode::GYear(gy) => gy.write_trig(writer),
-            LiteralNode::LangString(ls) => ls.write_trig(writer),
-            LiteralNode::String(s) => {
-                writer.write_all(b"\"")?;
-                write_escaped_literal(writer, &s)?;
-                writer.write_all(b"\"")?;
-
-                Ok(())
-            }
+            LiteralNode::String(ls) => ls.write_trig(writer)
         }
     }
 }

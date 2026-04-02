@@ -3,17 +3,13 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 
-use crate::WriteTriG;
 use crate::errors::RdfTrigError;
-use crate::nodes::object::Object;
-use crate::nodes::literals::LiteralNode;
+use crate::traits::{WriteNQuads, WriteTriG};
+
+const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal>";
 
 /// A wrapper around an [`f32`], which can be constructed either with a 
 /// native `f32`, or with a string which can be parsed as one.
-/// 
-/// Values in this struct are stored as `f32`s and output with a custom `f32` 
-/// formatting in [`WriteTriG`], which appends a period (".") if the value is a 
-/// whole number.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DecimalLiteral(f32);
 
@@ -55,26 +51,29 @@ impl From<f32> for DecimalLiteral {
     }
 }
 
-impl<'a> Into<LiteralNode<'a>> for DecimalLiteral {
-    #[inline(always)]
-    fn into(self) -> LiteralNode<'a> {
-        LiteralNode::Decimal(self)
-    }
-}
-
-impl<'a> Into<Object<'a>> for DecimalLiteral {
-    #[inline]
-    fn into(self) -> Object<'a> {
-        Object::Literal(self.into())
+impl WriteNQuads for DecimalLiteral {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(b"\"")?;
+        writer.write_all(self.0.to_string().as_bytes())?;
+        if self.0.fract() == 0.0 {
+            writer.write_all(b".")?;
+        }
+        writer.write_all(b"\"^^")?;
+        writer.write_all(XSD_DECIMAL_IRI.as_bytes())?;
+        Ok(())
     }
 }
 
 impl WriteTriG for DecimalLiteral {
     fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         writer.write_all(self.0.to_string().as_bytes())?;
+        // Trailling period is to ensure this is captured as a decimal by TriG 
+        // parsers where the fractional part is 0. This is because decimal types 
+        // are inferred in TriG by a trailling decimal.
         if self.0.fract() == 0.0 {
             writer.write_all(b".")?;
         }
+
         Ok(())
     }
 }

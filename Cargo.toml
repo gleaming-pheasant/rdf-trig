@@ -8,7 +8,7 @@ ahash = "0.8"
 chrono = { version = "0.4", optional = true }
 indexmap = "2.13"
 time = { version = "0.3", features = ["macros", "parsing"] }
-url = "2.5"
+fluent-uri = "0.4"
 
 [features]
 chrono = ["dep:chrono", "chrono/clock"]

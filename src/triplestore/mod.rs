@@ -1,309 +1,256 @@
-mod index;
-mod views;
+mod trig_impl;
+use trig_impl::TriGStore;
 
-use std::collections::hash_map::Iter;
-use std::io::{Result as IoResult, Write};
+use std::io::{self, Write};
 
-use crate::namespaces::Namespace;
-use crate::namespaces::statics::XSD;
-use crate::namespaces::store::{NamespaceId, NamespaceStore};
-use crate::nodes::{NodeId, NodeStore, StagingNode};
+use crate::nodes::{NodeId, NodeStore, Node};
 use crate::triples::{
-    InternedTriple, InternedTripleId, InternedTripleStore, Triple
+    InternedTriple,
+    InternedTripleStore,
+    Triple,
+    TripleView
 };
-use crate::traits::WriteTriG;
-use crate::triplestore::index::GraphIndex;
-use crate::triplestore::views::{GraphView, IriNodeView, NodeView, TripleView};
+use crate::traits::{WriteNQuads, WriteTriG};
 
 /// A `TripleStore` should be the main entry point for applications using this 
 /// crate.
 /// 
-/// Create a `TripleStore`, and use it to register `Graph`s (for quick dynamic 
-/// declaration of [`Quad`]s, without the need to clone each `Graph`'s IRI per 
-/// `Quad`) and [`Triple`]s.
+/// Create a `TripleStore`, and use it to register `Triple`s composed of 
+/// `Graph`s, `Subject`s, `Predicate`s and `Object`s. These, themselves, being 
+/// composed of `BlankNode`s, `LiteralNode`s and `NamedNode`s.
+/// 
+/// Once your `TripleStore` is built, use it to output your graphs to RDF 
+/// formats `TriG` and `N-Quads` using the relevant traits.
 #[derive(Debug)]
 pub struct TripleStore {
-    namespaces: NamespaceStore,
     nodes: NodeStore,
-    triples: InternedTripleStore,
-    graph_index: GraphIndex
+    triples: InternedTripleStore
 }
 
 impl TripleStore {
     /// Create a new `TripleStore`.
-    /// 
-    // Initialises the triplestore with the [`XSD`] namespace already 
-    // registered, due to its necessity for using any literal types.
     pub fn new() -> TripleStore {
-        let mut namespaces = NamespaceStore::new();
-        namespaces.intern_namespace(XSD);
-
         TripleStore {
-            namespaces,
             nodes: NodeStore::new(),
-            triples: InternedTripleStore::new(),
-            graph_index: GraphIndex::new()
+            triples: InternedTripleStore::new()
         }
     }
 
-    /// Add a `Triple` (or impl [`IntoTriple`]) to this `TripleStore`.
+    /// Add a `Triple` (or impl `Into<Triple>`) to this `TripleStore`.
     pub fn add_triple<'a, T: Into<Triple<'a>>>(&mut self, triple: T) {
-        let triple = self.intern_triple(triple.into());
-        
-        // Get a clone of the `NodeId` for the graph for adding to the index.
-        let graph_id = triple.graph();
-
-        let interned_triple_id = self.triples.intern_triple(triple);
-
-        // Add to index.
-        self.graph_index.add_triple(graph_id, interned_triple_id);
+        let interned_triple = self.intern_triple(triple.into());
+        self.triples.intern_triple(interned_triple);
     }
 
-    /// Add all of the "nodes" in the provided `Triple` to this `TripleStore`'s 
-    /// [`NodeStore`], returning an [`InternedTriple`] wrapper around the 
-    /// [`NodeID`] for each "node".
-    fn intern_triple(
-        &mut self, triple: Triple<'_>
+    /// Add all of the `Node`s in the provided `Triple` to this `TripleStore`'s 
+    /// `NodeStore`, returning an `InternedTriple` wrapper around the `NodeId` 
+    /// for each `Node`.
+    fn intern_triple<'a>(
+        &mut self, triple: Triple<'a>
     ) -> InternedTriple {
-        let ns_store = &mut self.namespaces;
         let (graph, subject, predicate, object) = triple.into_parts();
 
-        let graph = graph.map(|g| g.into_staging_node(ns_store));
-        let subject = subject.into_staging_node(ns_store);
-        let predicate = predicate.into_staging_node(ns_store);
-        let object = object.into_staging_node(ns_store);
-
-        let graph = graph.map(|sg| self.intern_node(sg));
-        let subject = self.intern_node(subject);
-        let predicate = self.intern_node(predicate);
-        let object = self.intern_node(object);
+        let graph = graph.map(|sg| self.intern_node(sg.into()));
+        let subject = self.intern_node(subject.into());
+        let predicate = self.intern_node(predicate.into());
+        let object = self.intern_node(object.into());
 
         InternedTriple::new(
             graph, subject, predicate, object
         )
     }
 
-    /// Add a [`StagingNode`] to the [`NodeStore`] of this `TripleStore`.
-    fn intern_node<'a>(&mut self, staging_node: StagingNode<'a>) -> NodeId {
+    /// Add a `Node` to the `NodeStore` of this `TripleStore`.
+    fn intern_node<'a>(&mut self, staging_node: Node<'a>) -> NodeId {
         self.nodes.intern_node(staging_node)
     }
 
-    /// Retrieve a [`NodeView`] for the given [`NodeId`].
-    /// 
-    /// This function resolves any contained [`Namespace`]s if the `Node` is an 
-    /// IRI node.
-    fn resolve_node<'a>(&'a self, node_id: NodeId) -> NodeView<'a> {
-        match self.nodes.query_node(node_id) {
-            StagingNode::Blank(blank) => NodeView::Blank(blank),
-            StagingNode::Iri(iri) => {
-                let namespace = self.resolve_namespace(iri.namespace_id());
-                NodeView::Iri(IriNodeView::new(&namespace, iri.local_name()))
-            },
-            StagingNode::Literal(literal) => NodeView::Literal(literal)
-        }
+    /// Retrieve a `Node` reference for the given `NodeId`.
+    fn resolve_node(&self, node_id: NodeId) -> &Node<'static> {
+        self.nodes.query_node(node_id)
     }
 
-    /// Retrieve a [`GraphView`] for the given [`NodeId`].
-    /// 
-    /// Panics if called on any `NodeId` which doesn't resolve to an `IriNode`; 
-    /// don't use it on anything but a `Graph`.
-    fn resolve_graph_node<'a>(&'a self, node_id: NodeId) -> GraphView<'a> {
-        match self.nodes.query_node(node_id) {
-            StagingNode::Iri(iri) => {
-                let namespace = self.resolve_namespace(iri.namespace_id());
-                GraphView::new(namespace.iri(), iri.local_name())
-            },
-            _ => unreachable!()
-        }
-    }
-
-    /// Retrieve a reference to a [`Namespace`] for the given [`NamespaceId`].
-    fn resolve_namespace(
-        &self, namespace_id: NamespaceId
-    ) -> &Namespace<'static> {
-        self.namespaces.query_namespace(namespace_id)
-    }
-
-    /// Retrieve a [`TripleView`] for the given [`InternedTripleId`].
-    /// 
-    /// This function resolves any contained [`Namespace`]s for any IRI Nodes.
-    fn resolve_triple<'a>(
-        &'a self, triple_id: InternedTripleId
+    /// Take an `InternedTriple` and turn it into a `TripleView` by resolving 
+    /// all of its contained `Node`s.
+    fn resolve_triple_view_from_interned<'a>(
+        &'a self, interned_triple: &InternedTriple
     ) -> TripleView<'a> {
-        let interned_triple = self.triples.query_triple(triple_id);
-
         TripleView::new(
-            self.resolve_node(*interned_triple.subject()),
-            self.resolve_node(*interned_triple.predicate()),
-            self.resolve_node(*interned_triple.object())
+            interned_triple.graph()
+                .and_then(|gn_id| Some(self.resolve_node(gn_id))),
+            self.resolve_node(interned_triple.subject()),
+            self.resolve_node(interned_triple.predicate()),
+            self.resolve_node(interned_triple.object())
         )
     }
 
-    /// Retrieve an iterator of all graphs and their corresponding 
-    /// `InternedTripleId`s in the `graph_index` of this `TripleStore`.
-    fn graphs_iter<'a>(&'a self)
-    -> Iter<'a, Option<NodeId>, Vec<InternedTripleId>> {
-        self.graph_index.iter()
+    /// Retrieve a `Vec` of `NodeId`s for all `InternedTriple`s contained in 
+    /// this `TripleStore`, which can the be sorted to retrieve a Compressed 
+    /// Sparse Row matrix, ordered for outputting values via `TriG`
+    /// 
+    /// This is a costly O(*n* log *n*) operation, and should only be used when 
+    /// outputting to TriG; on the grounds that the overhead of sorting the data 
+    /// is acceptable for the savings in written output size.
+    fn to_trig_store(&self) -> TriGStore {
+        // Costly, but must be a Vec to implement sort.
+        TriGStore::new(self.triples.iter().collect())
+    }
+
+    /// Retrieve all interned `Triple`s as an iterator over `TripleView`s.
+    /// 
+    /// Each stored `InternedTriple` is collected from the `triples` 
+    /// `InternedTripleStore` and resolved to `Node`s.
+    fn triples_iter<'a>(&'a self) -> impl Iterator<Item = TripleView<'a>> {
+        self.triples.iter()
+            .map(|it| self.resolve_triple_view_from_interned(it))
+    }
+}
+
+impl WriteNQuads for TripleStore {
+    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        // With N-Quads, we don't care about graph order. Would use the index if 
+        // we were still writing in TriG.
+        for triple in self.triples_iter() {
+            triple.write_nquads(writer)?;
+        }
+
+        Ok(())
     }
 }
 
 impl WriteTriG for TripleStore {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> IoResult<()> {
-        self.namespaces.write_trig(writer)?;
-        writer.write_all(b"\n")?;
-
-        for graph in self.graphs_iter() {
-            match graph.0 {
-                None => {
-                    for triple_id in &*graph.1 {
-                        self.resolve_triple(*triple_id).write_trig(writer)?;
-                        writer.write_all(b"\n")?;
-                    }
-                },
-                Some(graph_id) => {
-                    // Write the opening for the graph first.
-                    self.resolve_graph_node(*graph_id).write_trig(writer)?;
-                    writer.write_all(b" { ")?; // Padding before first triple.
-
-                    // We don't care about writing white space to align with the 
-                    // graph declaration, as often stylised. This is a waste of 
-                    // bytes.
-                    for triple_id in &*graph.1 {
-                        self.resolve_triple(*triple_id).write_trig(writer)?;
-                        writer.write_all(b"\n")?;
-                    }
-
-                    writer.write_all(b" }\n")?; // Close the graph block
-                }
-            }
-        }
-        
-        Ok(())
+    /// Calls a specialised version - write_store_trig() - to separate out the 
+    /// Compressed Sparse Row logic.
+    #[inline]
+    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
+        self.to_trig_store().write_store_trig(writer, &self.nodes)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::namespaces::statics::{AOCAT, ARIADNEPLUS, RDFS};
-    use crate::nodes::predicate::{RDF_TYPE};
-    use crate::nodes::{IriNode, LangStringLiteral};
+    use crate::nodes::{BlankNode, DateTimeLiteral, LiteralNode, NamedNode, StringLiteral};
+    use crate::nodes::statics::{aocat, owl, rdf, rdfs};
 
     use super::*;
 
     #[test]
-    fn test_expected_triple_write_trig() {
-        let mut store = TripleStore::new();
+    fn test_write_nquads() {
+        let mut ts = TripleStore::new();
 
-        let triple = Triple::new(
-            IriNode::new(ARIADNEPLUS, "My::Class/123"),
-            IriNode::new(RDFS, String::from("label")),
-            LangStringLiteral::new_en("Is a\tspecial class")
+        let owned_graph = "http://www.example.com/MyGraph".to_string();
+        let owned_resource1 = "https://example.com/resources/MyResource"
+            .to_string();
+
+        ts.add_triple(
+            Triple::new_with_graph(
+                NamedNode::new(owned_graph.clone()).unwrap().into(),
+                NamedNode::new(owned_resource1.clone()).unwrap().into(),
+                rdf::Property::Type.into(),
+                owl::Class::Thing.into()
+            )
         );
 
-        store.add_triple(triple);
+        let resource2 = "http://www.example.com/MyOtherResource";
+
+        ts.add_triple(
+            Triple::new(
+                NamedNode::new(resource2).unwrap().into(),
+                rdf::Property::Type.into(),
+                aocat::Class::AoIndividualDataResource.into()
+            )
+        );
 
         let mut buf = vec![];
-
-        store.write_trig(&mut buf).unwrap();
+        ts.write_nquads(&mut buf).unwrap();
+        let nquads_string = String::from_utf8(buf).unwrap();
 
         assert_eq!(
-            String::from_utf8(buf).unwrap(),
-            String::from(
-                "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix ariadneplus: <https://ariadne-infrastructure.eu/aocat/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n<https://ariadne-infrastructure.eu/aocat/My::Class/123> rdfs:label \"Is a\\tspecial class\"@en .\n\n"
+            nquads_string,
+            format!(
+                "<{}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> <{}> .\n\
+                <{}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/AO_Individual_Data_Resource> .\n",
+                owned_resource1, owned_graph, resource2
             )
         );
     }
 
     #[test]
-    fn test_expected_triple_and_graph_write_trig() {
-        let mut store = TripleStore::new();
+    fn test_write_nquads_with_literals() {
+        let mut ts = TripleStore::new();
 
-        let my_namespace = Namespace::new(
-            "prefix", "http://www.example.com/"
-        ).unwrap();
+        ts.add_triple(Triple::new(
+            NamedNode::new("urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36").unwrap().into(),
+            aocat::Property::WasCreatedOn.into(),
+            DateTimeLiteral::try_from_str("1969-10-12T12:59:30Z").unwrap().into()
+        ));
 
-        let quad = Triple::new_with_graph(
-            IriNode::new(my_namespace, "SND::Archaeology"),
-            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
-            IriNode::new(RDFS, String::from("label")),
-            LangStringLiteral::new_en("Is a piece of stained glass")
-        );
-
-        store.add_triple(quad);
-
-        let triple = Triple::new(
-            IriNode::new(ARIADNEPLUS, "Natural History Museum"),
-            RDF_TYPE,
-            IriNode::new(AOCAT, "AO_Agent")
-        );
-
-        store.add_triple(triple);
+        ts.add_triple(Triple::new(
+            BlankNode::new("unknown~node").into(),
+            rdfs::Property::Label.into(),
+            StringLiteral::new("mon node", Some("fr")).unwrap().into()
+        ));
 
         let mut buf = vec![];
+        ts.write_nquads(&mut buf).unwrap();
+        let nquads_string = String::from_utf8(buf).unwrap();
 
-        store.write_trig(&mut buf).unwrap();
-
-        let string_output = String::from_utf8(buf).unwrap();
-
-        // No guarantee of the output order here, hence .contains().
-        assert!(string_output.contains(
-            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
-        ));
-        assert!(string_output.contains(
-            "<http://www.example.com/SND::Archaeology> {"
-        ));
-        assert!(string_output.contains(
-            "{ ariadneplus:StainedGlassClass rdfs:label \"Is a piece of stained glass\"@en ."
-        ));
+        assert_eq!(
+            nquads_string,
+            "<urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/was_created_on> \"1969-10-12T12:59:30Z\"^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n\
+            _:unknown\\~node <http://www.w3.org/2000/01/rdf-schema#label> \"mon node\"@fr .\n"
+        );
     }
 
     #[test]
-    fn test_borrowed_iri_node() {
-        let mut store = TripleStore::new();
+    fn test_write_trig() {
+        // Owned strings are already tested in previous tests.
+        let graph = "urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36";
+        let graph_subject = "https://www.example.com/MyResource";
 
-        let my_namespace = Namespace::new(
-            "prefix", "http://www.example.com/"
-        ).unwrap();
+        let outer_subject = "https://www.example.com/MyOuterResource";
 
-        let my_reusable_iri = IriNode::new(my_namespace, "ADS::CVMA");
+        let mut ts = TripleStore::new();
 
-        let quad1 = Triple::new_with_graph(
-            // Uses clone interally, but literally just clones the pointers.
-            &my_reusable_iri,
-            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
-            IriNode::new(RDFS, String::from("label")),
-            LangStringLiteral::new_en("Is a piece of stained glass")
-        );
+        ts.add_triple(Triple::new_with_graph(
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            rdf::Property::Type.into(),
+            owl::Class::Thing.into()
+        ));
 
-        store.add_triple(quad1);
+        ts.add_triple(Triple::new_with_graph(
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            owl::Property::OneOf.into(),
+            LiteralNode::new("This Thing").into()
+        ));
 
-        let quad2 = Triple::new_with_graph(
-            &my_reusable_iri,
-            IriNode::new(ARIADNEPLUS, "StainedGlassClass"),
-            RDF_TYPE,
-            IriNode::new(AOCAT, "AO_Resource")
-        );
+        ts.add_triple(Triple::new_with_graph(
+            NamedNode::new(graph).unwrap().into(),
+            NamedNode::new(graph_subject).unwrap().into(),
+            owl::Property::OneOf.into(),
+            LiteralNode::new("This Other Thing").into()
+        ));
 
-        store.add_triple(quad2);
+        ts.add_triple(Triple::new(
+            NamedNode::new(outer_subject).unwrap().into(),
+            aocat::Property::HasPart.into(),
+            NamedNode::new(graph_subject).unwrap().into()
+        ));
 
         let mut buf = vec![];
-
-        store.write_trig(&mut buf).unwrap();
-
-        let string_output = String::from_utf8(buf).unwrap();
-
-        // No guarantee of the output order here, hence .contains().
-        assert!(string_output.contains(
-            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
-        ));
-        assert!(string_output.contains(
-            "<http://www.example.com/ADS::CVMA> {"
-        ));
-        assert!(string_output.contains(
-            "ariadneplus:StainedGlassClass rdfs:label \"Is a piece of stained glass\"@en ."
-        ));
-        assert!(string_output.contains(
-            "ariadneplus:StainedGlassClass a aocat:AO_Resource ."
-        ));
+        ts.write_trig(&mut buf).unwrap();
+        let trig_string = String::from_utf8(buf).unwrap();
+        
+        assert_eq!(
+            trig_string,
+            // Default Graph (None) is always first in `Ord`
+            "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> . \
+            <https://www.example.com/MyOuterResource> <https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/has_part> <https://www.example.com/MyResource> . \
+            <urn:uuid:29d82556-7fac-4ab8-b1a1-a652d4b1ee36> { \
+            <https://www.example.com/MyResource> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> ; \
+            <http://www.w3.org/2002/07/owl#oneOf> \"This Thing\" , \"This Other Thing\" . } "
+        );
     }
 }
