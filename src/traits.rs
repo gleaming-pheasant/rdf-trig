@@ -76,7 +76,7 @@ pub(crate) trait ToStatic {
 /// and don't care about the presence or order of graphs or other named nodes.
 pub trait WriteNQuadsAsync {
     /// Write self to the provided writer in N-Quads format.
-    fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    async fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send;
 }
@@ -90,11 +90,11 @@ pub trait WriteNQuadsAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
     #[inline]
-    fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    async fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send
     {
-        (**self).write_nquads_async(writer)
+        (**self).write_nquads_async(writer).await
     }
 }
 
@@ -111,7 +111,7 @@ impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
 /// expect XSD type declarations.
 pub trait WriteTriGAsync {
     /// Write self to the provided writer in TriG format.
-    fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    async fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send;
 }
@@ -125,10 +125,10 @@ pub trait WriteTriGAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteTriGAsync + ?Sized> WriteTriGAsync for &'a T {
     #[inline]
-    fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    async fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
     where
         W: AsyncWrite + Unpin + Send
     {
-        (**self).write_trig_async(writer)
+        (**self).write_trig_async(writer).await
     }
 }
