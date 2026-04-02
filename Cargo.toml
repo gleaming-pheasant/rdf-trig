@@ -12,6 +12,7 @@ fluent-uri = "0.4"
 tokio = { version = "1.50", optional = true }
 
 [features]
+all = ["chrono", "time", "tokio"]
 chrono = ["dep:chrono", "chrono/clock"]
 time = ["time/formatting"]
 tokio = ["dep:tokio"]
