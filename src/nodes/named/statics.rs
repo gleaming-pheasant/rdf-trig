@@ -114,6 +114,8 @@ macro_rules! define_ontology {
 
 define_ontology!(aocat, "https://www.ariadne-infrastructure.eu/resource/ao/cat/1.1/",
     Properties {
+        From => "from",
+        Until => "until",
         HasTemporalCoverage => "has_temporal_coverage",
         HasName => "has_name",
         HasPlaceName => "has_place_name",
