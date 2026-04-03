@@ -9,7 +9,10 @@ chrono = { version = "0.4", optional = true }
 indexmap = "2.13"
 time = { version = "0.3", features = ["macros", "parsing"] }
 fluent-uri = "0.4"
-tokio = { version = "1.50", features = ["io-util"], optional = true }
+tokio = { version = "1.51", features = ["io-util"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.51", features = ["rt-multi-thread", "macros"] }
 
 [features]
 all = ["chrono", "time", "tokio"]

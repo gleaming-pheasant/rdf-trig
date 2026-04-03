@@ -494,3 +494,64 @@ mod tests {
         );
     }
 }
+
+#[cfg(feature = "tokio")]
+#[cfg(test)]
+mod async_tests {
+    use super::*;
+    use::tokio;
+    use tokio::io::{AsyncReadExt, duplex};
+
+    #[tokio::test]
+    async fn test_async_bool_write_nquads_match() {
+        // Test that the output of `Write...Async` matches `Write...`
+        let bool_literal = BooleanLiteral::from(true);
+        
+        let mut sync_buf = vec![];
+        bool_literal.write_nquads(&mut sync_buf).unwrap();
+
+        // Buffer is deliberately small to catch failures on new writes.
+        let (mut writer, mut reader) = duplex(8);
+
+        let handle = tokio::spawn(async move {
+            use crate::traits::WriteNQuadsAsync;
+
+            bool_literal.write_nquads_async(&mut writer).await.unwrap();
+        });
+
+        let mut async_buf = Vec::new();
+        reader.read_to_end(&mut async_buf).await.unwrap();
+
+        handle.await.unwrap();
+
+        assert_eq!(sync_buf, async_buf);
+    }
+
+    
+    #[cfg(feature = "time")]
+    #[tokio::test]
+    async fn test_async_datetime_write_trig_match() {
+        use time::macros::datetime;
+
+        let offset = datetime!(2020-03-01 09:30:25.000 -3);
+        let dt_literal = DateTimeLiteral::try_from(offset).unwrap();
+
+        let mut sync_buf = vec![];
+        dt_literal.write_trig(&mut sync_buf).unwrap();
+
+        let (mut reader, mut writer) = duplex(8);
+
+        let handler = tokio::spawn(async move {
+            use crate::traits::WriteTriGAsync;
+
+            dt_literal.write_trig_async(&mut writer).await.unwrap();
+        });
+
+        let mut async_buf = vec![];
+        reader.read_to_end(&mut async_buf).await.unwrap();
+
+        handler.await.unwrap();
+
+        assert_eq!(sync_buf, async_buf);
+    }
+}

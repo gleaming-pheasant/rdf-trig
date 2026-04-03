@@ -5,7 +5,8 @@ and [TriG](https://www.w3.org/TR/trig/) from Rust native types.
 Provides verified `Graph`, `Triple`, `Subject`, `Predicate` and `Object` types 
 for adding to a `TripleStore`. It also provides traits for writing the entire 
 `TripleStore` and/or any individual elements to TriG on any 
-`impl std::io::Write`.
+`impl std::io::Write` or `impl tokio::io::AsyncWrite` (with the `tokio` feature 
+flag enabled).
 
 The main impetus of this crate is speed. It uses types and methods explicitly 
 for reading and writing types with as little reallocation or copying as 
