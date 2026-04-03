@@ -4,6 +4,8 @@ use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
 use crate::traits::{WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 
 const XSD_DECIMAL_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#decimal>";
 

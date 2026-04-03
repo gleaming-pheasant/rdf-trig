@@ -11,6 +11,8 @@ use crate::triples::{
     TripleView
 };
 use crate::traits::{WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 
 /// A `TripleStore` should be the main entry point for applications using this 
 /// crate.

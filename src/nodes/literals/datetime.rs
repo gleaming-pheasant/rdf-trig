@@ -5,16 +5,37 @@ use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
 use time::{OffsetDateTime, PrimitiveDateTime};
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
+#[cfg(feature = "tokio")]
+use tokio::io::AsyncWriteExt;
 
-use crate::impl_write_sync_and_async;
 use crate::errors::RdfTrigError;
-use crate::traits::{
-    ToStatic,
-    WriteNQuads,
-    WriteNQuadsAsync,
-    WriteTriG,
-    WriteTriGAsync
-};
+use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
+
+macro_rules! impl_write_trig_sync {
+    (
+        $target:ty, // The type to implement the function for.
+        $( $lt:lifetime )?, // Optional lifetime if the target has one.
+        $( $this:ident )?, // Optional declaration which maps `this` to `self`.
+        [ $($part:expr),* $(,)? ], // Expressions to write (e.g. b"^^xsd:decimal").
+        // $(< $($implementor:ident),* $(,)? >)? // List of implementors which will be called after parts (e.g. b for a captured BooleanLiteral).
+    ) => {
+        impl $( <$lt> )? WriteTriG for $target {
+            fn write_trig<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+                $( let $this = self; )?
+
+                $(
+                    writer.write_all($part)?;
+                )*
+                // $(
+                //     $implementor.write_trig(writer)?;
+                // )*
+                Ok(())
+            }
+        }
+    };
+}
 
 const XSD_DATETIME_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#dateTime>";
 
@@ -139,25 +160,58 @@ impl<'a> ToStatic for DateTimeLiteral<'a> {
     }
 }
 
-impl_write_sync_and_async!(
-    DateTimeLiteral<'_>, this,
-    WriteNQuads, write_nquads,
-    WriteNQuadsAsync, write_nquads_async,
-    [
-        b"\"",
-        this.0.as_bytes(),
-        b"\"^^",
-        XSD_DATETIME_IRI.as_bytes()
-    ]
-);
+impl<'a> WriteNQuads for DateTimeLiteral<'a> {
+    fn write_nquads<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(b"\"")?;
+        writer.write_all(self.0.as_bytes())?;
+        writer.write_all(b"\"^^")?;
+        writer.write_all(XSD_DATETIME_IRI.as_bytes())?;
+        Ok(())
+    }
+}
 
-impl_write_sync_and_async!(
-    DateTimeLiteral<'_>, this,
-    WriteTriG, write_trig,
-    WriteTriGAsync, write_trig_async,
-    [
-        b"\"",
-        this.0.as_bytes(),
-        b"\"^^xsd:dateTime"
-    ]
-);
+impl_write_trig_sync!(DateTimeLiteral<'a>);
+
+// impl<'a> WriteTriG for DateTimeLiteral<'a> {
+//     fn write_trig<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+//         writer.write_all(b"\"")?;
+//         writer.write_all(self.0.as_bytes())?;
+//         writer.write_all(b"\"^^xsd:dateTime")?;
+//         Ok(())
+//     }
+// }
+
+#[cfg(feature = "tokio")]
+impl<'a> WriteNQuadsAsync for DateTimeLiteral<'a> {
+    fn write_nquads_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = std::io::Result<()>> + Send
+    where
+        W: tokio::io::AsyncWrite + Unpin + Send
+    {
+        async move {
+            writer.write_all(b"\"").await?;
+            writer.write_all(self.0.as_bytes()).await?;
+            writer.write_all(b"\"^^").await?;
+            writer.write_all(XSD_DATETIME_IRI.as_bytes()).await?;
+            Ok(())
+        }        
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl<'a> WriteTriGAsync for DateTimeLiteral<'a> {
+    fn write_trig_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = std::io::Result<()>> + Send
+    where
+        W: tokio::io::AsyncWrite + Unpin + Send
+    {
+        async move {
+            writer.write_all(b"\"").await?;
+            writer.write_all(self.0.as_bytes()).await?;
+            writer.write_all(b"\"^^xsd:dateTime").await?;
+            Ok(())
+        }        
+    }
+}

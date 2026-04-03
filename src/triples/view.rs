@@ -2,6 +2,8 @@ use std::io::{self, Write};
 
 use crate::nodes::Node;
 use crate::traits::WriteNQuads;
+#[cfg(feature = "tokio")]
+use crate::traits::WriteNQuadsAsync;
 
 /// A `TripleView` serves as a means to view a [`Triple`] as raw [`Node`]s. This 
 /// allows an interned `Triple` to be formatted in RDF formats (e.g. with 

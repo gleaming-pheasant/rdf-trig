@@ -14,6 +14,8 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 
 /// A wrapper around the possible options that this crate declares for literal 
 /// nodes (`GYearLiteral`s, `StringLiteral`s, etc). Each specific type - with 

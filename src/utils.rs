@@ -1,9 +1,7 @@
 //! Multi-purpose utilities used throughout this crate.
 //! 
-//! These function focus mainly on escaping strings for 
-//! [`crate::traits::WriteTriG`] implementations.
-pub mod macros;
-
+//! These function focus mainly on escaping strings for `WriteTriG` and 
+//! `WriteNQuads` implementations.
 use std::io::{Result as IoResult, Write};
 
 const LITERAL_ESCAPE_SYMBOLS: [u8; 256] = {

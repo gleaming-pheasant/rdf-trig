@@ -5,6 +5,8 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 use crate::utils::write_escaped_local_name;
 
 /// A `BlankNode` is simply a node with a `str` label. This crate relies on the 

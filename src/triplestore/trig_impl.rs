@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use crate::nodes::{NodeId, NodeStore};
 use crate::triples::InternedTriple;
 use crate::traits::WriteTriG;
+#[cfg(feature = "tokio")]
+use crate::traits::WriteTriGAsync;
 
 /// A `TriGStore` is a wrapper around offsets to different levels of Node 
 /// for representing data in a `TripleStore` in TriG.

@@ -3,6 +3,8 @@ use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 use crate::utils::write_escaped_literal;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

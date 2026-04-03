@@ -37,6 +37,8 @@ pub(crate) use store::{NodeId, NodeStore};
 use std::io::{self, Write};
 
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 
 
 // Must be an enum not a trait, in order to implement `Hash` via macro.

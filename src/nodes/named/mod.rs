@@ -5,6 +5,8 @@ use std::io::{self, Write};
 
 use crate::errors::RdfTrigError;
 use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+#[cfg(feature = "tokio")]
+use crate::traits::{WriteNQuadsAsync, WriteTriGAsync};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct NamedNode<'a>(Cow<'a, str>);
