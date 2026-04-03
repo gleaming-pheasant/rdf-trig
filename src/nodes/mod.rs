@@ -335,7 +335,7 @@ mod tests {
         let dt_literal = DateTimeLiteral::try_from(offset).unwrap();
 
         let mut buf = vec![];
-        dt_literal.write_nquads(&mut buf);
+        dt_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),
@@ -361,7 +361,7 @@ mod tests {
         let dt_literal = DateTimeLiteral::try_from(primitive).unwrap();
 
         let mut buf = vec![];
-        dt_literal.write_nquads(&mut buf);
+        dt_literal.write_nquads(&mut buf).unwrap();
 
         assert_eq!(
             String::from_utf8(buf).unwrap(),

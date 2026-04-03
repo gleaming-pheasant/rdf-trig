@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::io::{self, Write};
 
 #[cfg(feature = "chrono")]
 use chrono::{DateTime, FixedOffset, Local, NaiveDateTime, Utc};
@@ -7,8 +6,15 @@ use time::{OffsetDateTime, PrimitiveDateTime};
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 
+use crate::impl_write_sync_and_async;
 use crate::errors::RdfTrigError;
-use crate::traits::{ToStatic, WriteNQuads, WriteTriG};
+use crate::traits::{
+    ToStatic,
+    WriteNQuads,
+    WriteNQuadsAsync,
+    WriteTriG,
+    WriteTriGAsync
+};
 
 const XSD_DATETIME_IRI: &'static str = "<http://www.w3.org/2001/XMLSchema#dateTime>";
 
@@ -133,23 +139,25 @@ impl<'a> ToStatic for DateTimeLiteral<'a> {
     }
 }
 
-impl<'a> WriteNQuads for DateTimeLiteral<'a> {
-    fn write_nquads<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"\"")?;
-        writer.write_all(self.0.as_bytes())?;
-        writer.write_all(b"\"^^")?;
-        writer.write_all(XSD_DATETIME_IRI.as_bytes())?;
+impl_write_sync_and_async!(
+    DateTimeLiteral<'_>, this,
+    WriteNQuads, write_nquads,
+    WriteNQuadsAsync, write_nquads_async,
+    [
+        b"\"",
+        this.0.as_bytes(),
+        b"\"^^",
+        XSD_DATETIME_IRI.as_bytes()
+    ]
+);
 
-        Ok(())
-    }
-}
-
-impl<'a> WriteTriG for DateTimeLiteral<'a> {
-    fn write_trig<W: Write>(&self, writer: &mut W) -> io::Result<()> {
-        writer.write_all(b"\"")?;
-        writer.write_all(self.0.as_bytes())?;
-        writer.write_all(b"\"^^xsd:dateTime")?;
-
-        Ok(())
-    }
-}
+impl_write_sync_and_async!(
+    DateTimeLiteral<'_>, this,
+    WriteTriG, write_trig,
+    WriteTriGAsync, write_trig_async,
+    [
+        b"\"",
+        this.0.as_bytes(),
+        b"\"^^xsd:dateTime"
+    ]
+);

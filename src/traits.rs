@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::io::{self, Write};
 
 #[cfg(feature = "tokio")]
@@ -76,7 +77,9 @@ pub(crate) trait ToStatic {
 /// and don't care about the presence or order of graphs or other named nodes.
 pub trait WriteNQuadsAsync {
     /// Write self to the provided writer in N-Quads format.
-    async fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    fn write_nquads_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = io::Result<()>> + Send
     where
         W: AsyncWrite + Unpin + Send;
 }
@@ -90,11 +93,13 @@ pub trait WriteNQuadsAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
     #[inline]
-    async fn write_nquads_async<W>(&self, writer: &mut W) -> io::Result<()>
+    fn write_nquads_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = io::Result<()>> + Send
     where
         W: AsyncWrite + Unpin + Send
     {
-        (**self).write_nquads_async(writer).await
+        (**self).write_nquads_async(writer)
     }
 }
 
@@ -111,7 +116,9 @@ impl<'a, T: WriteNQuadsAsync + ?Sized> WriteNQuadsAsync for &'a T {
 /// expect XSD type declarations.
 pub trait WriteTriGAsync {
     /// Write self to the provided writer in TriG format.
-    async fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    fn write_trig_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = io::Result<()>> + Send
     where
         W: AsyncWrite + Unpin + Send;
 }
@@ -125,10 +132,12 @@ pub trait WriteTriGAsync {
 /// proof this in case of changes.
 impl<'a, T: WriteTriGAsync + ?Sized> WriteTriGAsync for &'a T {
     #[inline]
-    async fn write_trig_async<W>(&self, writer: &mut W) -> io::Result<()>
+    fn write_trig_async<W>(
+        &self, writer: &mut W
+    ) -> impl Future<Output = io::Result<()>> + Send
     where
         W: AsyncWrite + Unpin + Send
     {
-        (**self).write_trig_async(writer).await
+        (**self).write_trig_async(writer)
     }
 }
